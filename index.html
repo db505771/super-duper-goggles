@@ -42,6 +42,17 @@
         .role-rich { color: #f1c40f; text-shadow: 0 0 15px rgba(241, 196, 15, 0.4); }
         .role-wealthy { color: #e67e22; text-shadow: 0 0 15px rgba(230, 126, 34, 0.4); }
         .role-king { color: #e74c3c; text-shadow: 0 0 20px rgba(231, 76, 60, 0.5); }
+        .role-history { 
+            color: #fff; 
+            text-shadow: 0 0 20px #fff, 0 0 40px #fff; 
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
 
         #mainStage {
             width: 100%;
@@ -135,29 +146,6 @@
             height: 16px;
         }
 
-        /* Pity Bar Styles */
-        .pity-container {
-            width: 200px;
-            height: 4px;
-            background: #222;
-            margin-top: 20px;
-            position: relative;
-            overflow: hidden;
-        }
-        #pityBar {
-            height: 100%;
-            width: 0%;
-            background: #fff;
-            transition: width 0.3s ease;
-        }
-        .pity-label {
-            font-size: 8px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            opacity: 0.4;
-            margin-top: 8px;
-        }
-
         .text-role { font-size: 3rem; font-weight: 900; letter-spacing: -2px; }
         .text-word { font-size: 2.5rem; font-weight: 300; }
 
@@ -193,29 +181,23 @@
         <div class="controls">
             <button id="rollBtn" class="roll-btn">Roll Role</button>
             <div id="statusText" class="status-text">Ready</div>
-            
-            <div style="display: flex; flex-direction: column; align-items: center;">
-                <div class="pity-container"><div id="pityBar"></div></div>
-                <div class="pity-label">Luck Power (Pity)</div>
-            </div>
         </div>
     </div>
 
     <script>
         const ROLES = [
-            { id: 'stealer', name: "Stealer", min: 0, max: 50, weight: 35, class: "", isRare: false },
-            { id: 'peasant', name: "Peasant", min: 0, max: 100, weight: 30, class: "role-peasant", isRare: false },
-            { id: 'norole', name: "No Role", min: 0, max: 500, weight: 20, class: "", isRare: false },
-            { id: 'gifted', name: "Gifted", min: 100, max: 1000, weight: 10, class: "role-gifted", isRare: true },
-            { id: 'rich', name: "Rich", min: 1000, max: 5000, weight: 3, class: "role-rich", isRare: true },
-            { id: 'wealthy', name: "Wealthy", min: 10000, max: 50000, weight: 1.5, class: "role-wealthy", isRare: true },
-            { id: 'king', name: "King", min: 100000, max: 1000000, weight: 0.5, class: "role-king", isRare: true }
+            { id: 'stealer', name: "Stealer", min: 0, max: 50, weight: 23.8, class: "" },
+            { id: 'peasant', name: "Peasant", min: 0, max: 100, weight: 25, class: "role-peasant" },
+            { id: 'norole', name: "No Role", min: 0, max: 500, weight: 20, class: "" },
+            { id: 'gifted', name: "Gifted", min: 100, max: 1000, weight: 15, class: "role-gifted" },
+            { id: 'rich', name: "Rich", min: 1000, max: 5000, weight: 10, class: "role-rich" },
+            { id: 'wealthy', name: "Wealthy", min: 10000, max: 50000, weight: 5, class: "role-wealthy" },
+            { id: 'king', name: "King", min: 100000, max: 1000000, weight: 1, class: "role-king" },
+            { id: 'history', name: "History", min: 999999999, max: 999999999, weight: 0.2, class: "role-history" }
         ];
 
         const ITEM_HEIGHT = 120;
         let isRolling = false;
-        let pityCount = 0; // Goes from 0 to 10
-        const PITY_MAX = 10;
 
         const roleReel = document.getElementById('roleReel');
         const wordReel = document.getElementById('wordReel');
@@ -223,25 +205,13 @@
         const mainStage = document.getElementById('mainStage');
         const rollBtn = document.getElementById('rollBtn');
         const statusText = document.getElementById('statusText');
-        const pityBar = document.getElementById('pityBar');
 
         function init() {
-            const savedData = localStorage.getItem('roleRNG_save_v2');
+            const savedData = localStorage.getItem('roleRNG_v3');
             if (savedData) {
                 const data = JSON.parse(savedData);
-                pityCount = data.pity || 0;
-                updatePityUI();
                 const role = ROLES.find(r => r.name === data.savedRole);
                 if (role) displayResult(role, data.savedWords);
-            }
-        }
-
-        function updatePityUI() {
-            pityBar.style.width = `${(pityCount / PITY_MAX) * 100}%`;
-            if (pityCount >= PITY_MAX) {
-                pityBar.style.background = "#f1c40f"; // Gold when full
-            } else {
-                pityBar.style.background = "#fff";
             }
         }
 
@@ -257,6 +227,7 @@
             let items = [];
             for (let i = 0; i < count - 1; i++) {
                 if (isWords) {
+                    // Random numbers based on range
                     const val = Math.floor(Math.random() * (roleContext.max - roleContext.min + 1)) + roleContext.min;
                     items.push(val.toLocaleString());
                 } else {
@@ -281,32 +252,18 @@
             
             wordSection.classList.add('hidden-section');
             mainStage.classList.add('stage-centered');
-            statusText.textContent = pityCount >= PITY_MAX ? "PITY ACTIVATED!" : "Rolling Role...";
+            statusText.textContent = "Rolling Role...";
 
-            let selectedRole;
+            const totalWeight = ROLES.reduce((s, r) => s + r.weight, 0);
+            let rValue = Math.random() * totalWeight;
+            let selectedRole = ROLES[0];
             
-            // Check Pity
-            if (pityCount >= PITY_MAX) {
-                const rareRoles = ROLES.filter(r => r.id === 'rich' || r.id === 'wealthy' || r.id === 'king');
-                selectedRole = rareRoles[Math.floor(Math.random() * rareRoles.length)];
-                pityCount = 0; // Reset pity
-            } else {
-                const totalWeight = ROLES.reduce((s, r) => s + r.weight, 0);
-                let r = Math.random() * totalWeight;
-                for (const role of ROLES) {
-                    if (r < role.weight) {
-                        selectedRole = role;
-                        break;
-                    }
-                    r -= role.weight;
+            for (const role of ROLES) {
+                if (rValue < role.weight) {
+                    selectedRole = role;
+                    break;
                 }
-                
-                // Increase pity if not rare
-                if (!selectedRole.isRare) {
-                    pityCount = Math.min(PITY_MAX, pityCount + 1);
-                } else {
-                    pityCount = 0; // Reset if you get lucky naturally
-                }
+                rValue -= role.weight;
             }
 
             const wordVal = Math.floor(Math.random() * (selectedRole.max - selectedRole.min + 1)) + selectedRole.min;
@@ -319,11 +276,9 @@
             statusText.textContent = "Rolling Words...";
             await animateReel(wordReel, finalWords, true, selectedRole);
 
-            updatePityUI();
-            localStorage.setItem('roleRNG_save_v2', JSON.stringify({
+            localStorage.setItem('roleRNG_v3', JSON.stringify({
                 savedRole: selectedRole.name,
-                savedWords: finalWords,
-                pity: pityCount
+                savedWords: finalWords
             }));
 
             statusText.textContent = "Roll Complete";
