@@ -3,11 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Role RNG System</title>
+    <title>Role RNG Elite - Developer Edition</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&display=swap');
         
-        * { box-sizing: border-box; }
+        :root {
+            --stealer-color: #555;
+            --peasant-color: #a52a2a;
+            --gifted-color: #3498db;
+            --rich-color: #f1c40f;
+            --wealthy-color: #e67e22;
+            --king-color: #e74c3c;
+            --history-color: #fff;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body {
             background-color: #000;
             color: #fff;
@@ -27,33 +38,11 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 40px 20px;
+            padding: 20px;
             min-height: 100vh;
         }
 
-        .mask-vertical {
-            mask-image: linear-gradient(to bottom, transparent, black 30%, black 70%, transparent);
-            -webkit-mask-image: linear-gradient(to bottom, transparent, black 30%, black 70%, transparent);
-        }
-
-        /* Role Colors */
-        .role-peasant { color: #a52a2a; }
-        .role-gifted { color: #3498db; text-shadow: 0 0 15px rgba(52, 152, 219, 0.4); }
-        .role-rich { color: #f1c40f; text-shadow: 0 0 15px rgba(241, 196, 15, 0.4); }
-        .role-wealthy { color: #e67e22; text-shadow: 0 0 15px rgba(230, 126, 34, 0.4); }
-        .role-king { color: #e74c3c; text-shadow: 0 0 20px rgba(231, 76, 60, 0.5); }
-        .role-history { 
-            color: #fff; 
-            text-shadow: 0 0 20px #fff, 0 0 40px #fff; 
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.7; }
-            100% { opacity: 1; }
-        }
-
+        /* --- RNG Reels --- */
         #mainStage {
             width: 100%;
             display: flex;
@@ -62,105 +51,66 @@
             transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
             margin-bottom: 40px;
         }
-
-        .stage-centered { transform: translateY(100px); }
-
-        .reel-container {
-            height: 120px;
-            width: 100%;
-            position: relative;
-            overflow: hidden;
+        .stage-centered { transform: translateY(80px); }
+        .mask-vertical {
+            mask-image: linear-gradient(to bottom, transparent, black 30%, black 70%, transparent);
+            -webkit-mask-image: linear-gradient(to bottom, transparent, black 30%, black 70%, transparent);
         }
+        .reel-container { height: 120px; width: 100%; position: relative; overflow: hidden; }
+        .reel-strip { position: absolute; width: 100%; left: 0; top: 0; display: flex; flex-direction: column; }
+        .reel-item { height: 120px; display: flex; align-items: center; justify-content: center; text-align: center; flex-shrink: 0; }
 
-        .reel-strip {
-            position: absolute;
-            width: 100%;
-            left: 0;
-            top: 0;
-            display: flex;
-            flex-direction: column;
-        }
+        .label { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; opacity: 0.3; margin-bottom: 8px; }
+        .text-role { font-size: clamp(2.5rem, 8vw, 4rem); font-weight: 900; letter-spacing: -2px; text-transform: uppercase; }
+        .text-word { font-size: clamp(1.5rem, 6vw, 3rem); font-weight: 300; white-space: nowrap; width: 100%; overflow: hidden; text-overflow: ellipsis; }
+        
+        /* Role Colors */
+        .role-peasant { color: var(--peasant-color); }
+        .role-gifted { color: var(--gifted-color); text-shadow: 0 0 15px rgba(52, 152, 219, 0.4); }
+        .role-rich { color: var(--rich-color); text-shadow: 0 0 15px rgba(241, 196, 15, 0.4); }
+        .role-wealthy { color: var(--wealthy-color); text-shadow: 0 0 15px rgba(230, 126, 34, 0.4); }
+        .role-king { color: var(--king-color); text-shadow: 0 0 20px rgba(231, 76, 60, 0.5); }
+        .role-history { color: var(--history-color); text-shadow: 0 0 20px #fff, 0 0 40px #fff; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
 
-        .reel-item {
-            height: 120px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            flex-shrink: 0;
-        }
+        /* --- Panels --- */
+        .panel { position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: #000; z-index: 100; padding: 40px 24px; display: none; overflow-y: auto; }
+        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #222; padding-bottom: 10px; }
+        
+        .controls { display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; }
+        .roll-btn { background: #fff; color: #000; border: none; padding: 18px 60px; font-weight: 900; letter-spacing: 4px; text-transform: uppercase; cursor: pointer; transition: 0.2s; border-radius: 4px; }
+        .roll-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        .roll-btn.auto-active { background: #e74c3c; color: #fff; }
+        
+        .icon-btn { background: #111; border: 1px solid #222; color: #fff; width: 56px; height: 56px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .icon-btn:hover { background: #1a1a1a; border-color: #333; }
 
-        .label {
-            font-size: 9px;
-            letter-spacing: 4px;
-            text-transform: uppercase;
-            opacity: 0.3;
-            margin-bottom: 8px;
-        }
+        /* --- Admin UI --- */
+        .admin-section { margin-bottom: 25px; }
+        .admin-row { background: #111; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #222; }
+        .admin-row h4 { margin: 0 0 12px 0; font-size: 11px; text-transform: uppercase; color: #888; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
+        select, input { background: #000; color: #fff; border: 1px solid #333; padding: 12px; width: 100%; margin-bottom: 10px; border-radius: 6px; font-family: inherit; font-size: 14px; }
+        
+        .toggle-btn { background: #111; border: 1px solid #333; color: #666; padding: 8px 12px; font-size: 11px; cursor: pointer; border-radius: 6px; flex: 1; min-width: 90px; text-align: center; transition: 0.2s; }
+        .toggle-active { background: #fff; color: #000; border-color: #fff; font-weight: 700; }
 
-        #wordSection {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            transition: opacity 0.5s, transform 0.5s;
-            margin-top: 20px;
-        }
+        .inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+        .inv-card { background: #0a0a0a; padding: 15px; border-radius: 8px; border: 1px solid #1a1a1a; }
 
-        .hidden-section {
-            opacity: 0;
-            pointer-events: none;
-            transform: translateY(20px);
-        }
-
-        .controls {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 16px;
-            z-index: 10;
-        }
-
-        .roll-btn {
-            background-color: #fff;
-            color: #000;
-            border: none;
-            padding: 16px 48px;
-            font-size: 14px;
-            font-weight: 900;
-            letter-spacing: 6px;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .roll-btn:hover:not(:disabled) { opacity: 0.9; }
-        .roll-btn:active:not(:disabled) { transform: scale(0.95); }
-        .roll-btn:disabled { opacity: 0.1; cursor: not-allowed; }
-
-        .status-text {
-            font-size: 9px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            opacity: 0.2;
-            height: 16px;
-        }
-
-        .text-role { font-size: 3rem; font-weight: 900; letter-spacing: -2px; }
-        .text-word { font-size: 2.5rem; font-weight: 300; }
-
-        @media (min-width: 768px) {
-            .text-role { font-size: 4rem; }
-            .text-word { font-size: 3rem; }
-        }
+        .hidden-section { opacity: 0; pointer-events: none; }
+        .countdown-overlay { font-variant-numeric: tabular-nums; font-weight: 900; color: #f1c40f; font-size: 12px; letter-spacing: 2px; margin-top: 10px; height: 20px; }
+        
+        .danger-btn { background: #2a1111; color: #e74c3c; border: 1px solid #451a1a; padding: 10px; width: 100%; border-radius: 6px; cursor: pointer; font-size: 11px; text-transform: uppercase; font-weight: 700; }
+        
+        .stat-badge { font-size: 10px; background: #222; padding: 2px 6px; border-radius: 4px; color: #888; }
     </style>
 </head>
 <body>
 
-    <div class="app-container">
+    <div class="app-container" id="app">
         <div id="mainStage" class="stage-centered">
             <div style="width: 100%; display: flex; flex-direction: column; align-items: center;">
-                <div class="label">Role</div>
+                <div class="label">Current Role</div>
                 <div class="reel-container mask-vertical">
                     <div id="roleReel" class="reel-strip text-role">
                         <div class="reel-item">?</div>
@@ -179,8 +129,89 @@
         </div>
 
         <div class="controls">
-            <button id="rollBtn" class="roll-btn">Roll Role</button>
-            <div id="statusText" class="status-text">Ready</div>
+            <button id="rollBtn" class="roll-btn">Roll</button>
+            <div id="countdown" class="countdown-overlay"></div>
+            
+            <div style="display: flex; gap: 16px; margin-top: 20px;">
+                <button class="icon-btn" onclick="togglePanel('inventoryPanel')">
+                    <i data-lucide="package"></i>
+                </button>
+                <button id="autoRollToggle" class="icon-btn" onclick="toggleAutoRoll()">
+                    <i data-lucide="refresh-cw"></i>
+                </button>
+                <button class="icon-btn" onclick="togglePanel('adminPanel')">
+                    <i data-lucide="terminal"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inventory Panel -->
+    <div id="inventoryPanel" class="panel">
+        <div class="panel-header">
+            <h2 style="margin:0; font-weight: 900;">INVENTORY</h2>
+            <button style="background:none; border:none; color:#fff; cursor:pointer;" onclick="togglePanel('inventoryPanel')">
+                <i data-lucide="x"></i>
+            </button>
+        </div>
+        <div id="inventoryGrid" class="inventory-grid"></div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div id="adminPanel" class="panel">
+        <div class="panel-header">
+            <h2 style="margin:0; font-weight: 900; color: #e74c3c;">DEV TOOLS</h2>
+            <button style="background:none; border:none; color:#fff; cursor:pointer;" onclick="togglePanel('adminPanel')">
+                <i data-lucide="x"></i>
+            </button>
+        </div>
+        
+        <div class="admin-section">
+            <div class="admin-row">
+                <h4><i data-lucide="zap" size="14"></i> Force Result & Word Spoof</h4>
+                <select id="forceRole">
+                    <option value="none">Normal Random</option>
+                    <option value="stealer">Stealer</option>
+                    <option value="peasant">Peasant</option>
+                    <option value="norole">No Role</option>
+                    <option value="gifted">Gifted</option>
+                    <option value="rich">Rich</option>
+                    <option value="wealthy">Wealthy</option>
+                    <option value="king">King</option>
+                    <option value="history">History</option>
+                </select>
+                <input type="number" id="spoofWords" placeholder="Custom Word Count (0 = Random)">
+            </div>
+
+            <div class="admin-row">
+                <h4><i data-lucide="fast-forward" size="14"></i> Animation Speed (Seconds)</h4>
+                <input type="range" id="rollSpeed" min="0.2" max="3" step="0.1" value="1.8" oninput="document.getElementById('speedVal').textContent = this.value + 's'">
+                <div style="font-size: 10px; text-align: center;" id="speedVal">1.8s</div>
+            </div>
+
+            <div class="admin-row">
+                <h4><i data-lucide="trending-up" size="14"></i> Luck Manipulation</h4>
+                <div style="display: flex; gap: 10px;">
+                    <input type="number" id="luckValue" value="1" placeholder="Multiplier">
+                    <input type="number" id="countdownSecs" placeholder="Timer (s)">
+                </div>
+                <button class="roll-btn" style="width:100%; padding: 12px; font-size: 12px;" onclick="applyAdminLuck()">Activate Event</button>
+            </div>
+
+            <div class="admin-row">
+                <h4><i data-lucide="shield-off" size="14"></i> Auto-Roll Stop Filters</h4>
+                <div id="stopFilters" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+            </div>
+
+            <div class="admin-row">
+                <h4><i data-lucide="trash-2" size="14"></i> Discard List</h4>
+                <div id="discardList" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+            </div>
+
+            <div class="admin-row">
+                <h4><i data-lucide="database" size="14"></i> Storage Management</h4>
+                <button class="danger-btn" onclick="clearInventory()">Wipe All Inventory Data</button>
+            </div>
         </div>
     </div>
 
@@ -196,38 +227,95 @@
             { id: 'history', name: "History", min: 999999999, max: 999999999, weight: 0.2, class: "role-history" }
         ];
 
-        const ITEM_HEIGHT = 120;
-        let isRolling = false;
+        let state = {
+            inventory: {},
+            isRolling: false,
+            isAutoRolling: false,
+            adminLuck: 1,
+            adminCountdown: null,
+            discards: ['stealer'],
+            stopFilters: ['king', 'history'],
+            forcedRole: 'none',
+            rollDuration: 1.8
+        };
 
-        const roleReel = document.getElementById('roleReel');
-        const wordReel = document.getElementById('wordReel');
-        const wordSection = document.getElementById('wordSection');
-        const mainStage = document.getElementById('mainStage');
-        const rollBtn = document.getElementById('rollBtn');
-        const statusText = document.getElementById('statusText');
+        function togglePanel(id) {
+            const p = document.getElementById(id);
+            p.style.display = p.style.display === 'block' ? 'none' : 'block';
+            if(id === 'inventoryPanel') renderInventory();
+            if(id === 'adminPanel') renderAdmin();
+        }
 
-        function init() {
-            const savedData = localStorage.getItem('roleRNG_v3');
-            if (savedData) {
-                const data = JSON.parse(savedData);
-                const role = ROLES.find(r => r.name === data.savedRole);
-                if (role) displayResult(role, data.savedWords);
+        function renderInventory() {
+            const grid = document.getElementById('inventoryGrid');
+            grid.innerHTML = ROLES.map(r => {
+                const data = state.inventory[r.id] || { count: 0, maxWords: 0 };
+                const color = getComputedStyle(document.documentElement).getPropertyValue(`--${r.id}-color`) || '#444';
+                return `
+                    <div class="inv-card">
+                        <div style="font-weight: 900; font-size: 11px; margin-bottom: 4px; color: ${color}">${r.name}</div>
+                        <div style="font-size: 10px; opacity: 0.4;">Total: ${data.count}</div>
+                        <div style="font-size: 10px; opacity: 0.4;">Best: ${data.maxWords.toLocaleString()}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderAdmin() {
+            document.getElementById('discardList').innerHTML = ROLES.map(r => `
+                <button class="toggle-btn ${state.discards.includes(r.id) ? 'toggle-active' : ''}" onclick="toggleSetting('discards', '${r.id}')">
+                    ${r.name}
+                </button>
+            `).join('');
+            document.getElementById('stopFilters').innerHTML = ROLES.map(r => `
+                <button class="toggle-btn ${state.stopFilters.includes(r.id) ? 'toggle-active' : ''}" onclick="toggleSetting('stopFilters', '${r.id}')">
+                    ${r.name}
+                </button>
+            `).join('');
+        }
+
+        function toggleSetting(key, id) {
+            if(state[key].includes(id)) state[key] = state[key].filter(d => d !== id);
+            else state[key].push(id);
+            renderAdmin();
+            save();
+        }
+
+        function toggleAutoRoll() {
+            state.isAutoRolling = !state.isAutoRolling;
+            const btn = document.getElementById('autoRollToggle');
+            if(state.isAutoRolling) {
+                btn.classList.add('auto-active');
+                if(!state.isRolling) startRoll();
+            } else {
+                btn.classList.remove('auto-active');
             }
         }
 
-        function displayResult(role, words) {
-            roleReel.innerHTML = `<div class="reel-item ${role.class}">${role.name}</div>`;
-            wordReel.innerHTML = `<div class="reel-item">${words}</div>`;
-            wordSection.classList.remove('hidden-section');
-            mainStage.classList.remove('stage-centered');
+        function applyAdminLuck() {
+            state.adminLuck = parseFloat(document.getElementById('luckValue').value) || 1;
+            const secs = parseInt(document.getElementById('countdownSecs').value) || 0;
+            state.adminCountdown = secs > 0 ? Date.now() + (secs * 1000) : null;
+            save();
+            togglePanel('adminPanel');
+        }
+
+        function clearInventory() {
+            if(confirm("DANGER: This will permanently delete all your rolled roles. Proceed?")) {
+                state.inventory = {};
+                save();
+                renderInventory();
+            }
         }
 
         async function animateReel(el, finalValue, isWords, roleContext = null) {
-            const count = 40;
+            const count = 30;
+            const ITEM_HEIGHT = 120;
+            const duration = parseFloat(document.getElementById('rollSpeed').value);
+            
             let items = [];
             for (let i = 0; i < count - 1; i++) {
                 if (isWords) {
-                    // Random numbers based on range
                     const val = Math.floor(Math.random() * (roleContext.max - roleContext.min + 1)) + roleContext.min;
                     items.push(val.toLocaleString());
                 } else {
@@ -236,58 +324,101 @@
                 }
             }
             items.push(isWords ? finalValue : `<span class="${roleContext.class}">${finalValue}</span>`);
+            
             el.style.transition = 'none';
             el.style.transform = 'translateY(0px)';
             el.innerHTML = items.map(item => `<div class="reel-item">${item}</div>`).join('');
             el.offsetHeight; 
-            el.style.transition = 'transform 3s cubic-bezier(0.1, 0, 0.1, 1)';
+            
+            el.style.transition = `transform ${duration}s cubic-bezier(0.1, 0, 0.1, 1)`;
             el.style.transform = `translateY(-${(count - 1) * ITEM_HEIGHT}px)`;
-            return new Promise(r => setTimeout(r, 3100));
+            return new Promise(r => setTimeout(r, (duration * 1000) + 100));
         }
 
         async function startRoll() {
-            if (isRolling) return;
-            isRolling = true;
-            rollBtn.disabled = true;
+            if (state.isRolling) return;
+            state.isRolling = true;
+            document.getElementById('rollBtn').disabled = true;
             
-            wordSection.classList.add('hidden-section');
-            mainStage.classList.add('stage-centered');
-            statusText.textContent = "Rolling Role...";
+            document.getElementById('wordSection').classList.add('hidden-section');
+            document.getElementById('mainStage').classList.add('stage-centered');
 
-            const totalWeight = ROLES.reduce((s, r) => s + r.weight, 0);
-            let rValue = Math.random() * totalWeight;
-            let selectedRole = ROLES[0];
+            let selectedRole;
+            const forceId = document.getElementById('forceRole').value;
+            const spoofVal = parseInt(document.getElementById('spoofWords').value) || 0;
             
-            for (const role of ROLES) {
-                if (rValue < role.weight) {
-                    selectedRole = role;
-                    break;
+            if(forceId !== 'none') {
+                selectedRole = ROLES.find(r => r.id === forceId);
+            } else {
+                const weights = ROLES.map(r => (r.weight < 10) ? r.weight * state.adminLuck : r.weight);
+                const totalWeight = weights.reduce((s, w) => s + w, 0);
+                let rValue = Math.random() * totalWeight;
+                for (let i = 0; i < ROLES.length; i++) {
+                    if (rValue < weights[i]) {
+                        selectedRole = ROLES[i];
+                        break;
+                    }
+                    rValue -= weights[i];
                 }
-                rValue -= role.weight;
             }
 
-            const wordVal = Math.floor(Math.random() * (selectedRole.max - selectedRole.min + 1)) + selectedRole.min;
+            const wordVal = spoofVal > 0 ? spoofVal : Math.floor(Math.random() * (selectedRole.max - selectedRole.min + 1)) + selectedRole.min;
             const finalWords = wordVal.toLocaleString();
 
-            await animateReel(roleReel, selectedRole.name, false, selectedRole);
-            mainStage.classList.remove('stage-centered');
-            await new Promise(r => setTimeout(r, 600));
-            wordSection.classList.remove('hidden-section');
-            statusText.textContent = "Rolling Words...";
-            await animateReel(wordReel, finalWords, true, selectedRole);
+            await animateReel(document.getElementById('roleReel'), selectedRole.name, false, selectedRole);
+            document.getElementById('mainStage').classList.remove('stage-centered');
+            await new Promise(r => setTimeout(r, 300));
+            document.getElementById('wordSection').classList.remove('hidden-section');
+            await animateReel(document.getElementById('wordReel'), finalWords, true, selectedRole);
 
-            localStorage.setItem('roleRNG_v3', JSON.stringify({
-                savedRole: selectedRole.name,
-                savedWords: finalWords
-            }));
+            if(!state.discards.includes(selectedRole.id)) {
+                if(!state.inventory[selectedRole.id]) state.inventory[selectedRole.id] = { count: 0, maxWords: 0 };
+                state.inventory[selectedRole.id].count++;
+                if(wordVal > state.inventory[selectedRole.id].maxWords) state.inventory[selectedRole.id].maxWords = wordVal;
+            }
 
-            statusText.textContent = "Roll Complete";
-            isRolling = false;
-            rollBtn.disabled = false;
+            save();
+            state.isRolling = false;
+            document.getElementById('rollBtn').disabled = false;
+
+            if(state.isAutoRolling) {
+                if(state.stopFilters.includes(selectedRole.id)) toggleAutoRoll();
+                else setTimeout(startRoll, 500);
+            }
         }
 
-        rollBtn.addEventListener('click', startRoll);
-        init();
+        function save() { localStorage.setItem('roleRNG_elite_v2', JSON.stringify(state)); }
+
+        function updateTick() {
+            if(state.adminCountdown) {
+                const remaining = state.adminCountdown - Date.now();
+                if(remaining <= 0) {
+                    state.adminCountdown = null;
+                    state.adminLuck = 1;
+                    save();
+                } else {
+                    const sTotal = Math.ceil(remaining / 1000);
+                    const m = Math.floor(sTotal / 60);
+                    const s = sTotal % 60;
+                    document.getElementById('countdown').textContent = `EVENT LUCK x${state.adminLuck}: ${m}:${s < 10 ? '0'+s : s}`;
+                }
+            } else {
+                document.getElementById('countdown').textContent = state.adminLuck > 1 ? `LUCK x${state.adminLuck} ACTIVE` : '';
+            }
+            requestAnimationFrame(updateTick);
+        }
+
+        document.getElementById('rollBtn').addEventListener('click', startRoll);
+        
+        const saved = localStorage.getItem('roleRNG_elite_v2');
+        if(saved) {
+            const parsed = JSON.parse(saved);
+            state = {...state, ...parsed, isRolling: false, isAutoRolling: false};
+            document.getElementById('rollSpeed').value = state.rollDuration || 1.8;
+        }
+        
+        lucide.createIcons();
+        updateTick();
     </script>
 </body>
 </html>
