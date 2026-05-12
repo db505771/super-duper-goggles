@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Role RNG Elite - Persistence Edition</title>
+    <title>Role RNG Elite - Refined Edition</title>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&display=swap');
@@ -42,16 +42,32 @@
             min-height: 100vh;
         }
 
-        /* --- RNG Reels --- */
+        .forced-timer-container {
+            width: 100%;
+            height: 4px;
+            background: #111;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 50;
+        }
+        #forcedProgressBar {
+            height: 100%;
+            width: 0%;
+            background: #3498db;
+            transition: width 1s linear;
+        }
+
         #mainStage {
             width: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
             transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-            margin-bottom: 40px;
+            margin-bottom: 20px;
         }
-        .stage-centered { transform: translateY(80px); }
+        .stage-centered { transform: translateY(60px); }
+        
         .mask-vertical {
             mask-image: linear-gradient(to bottom, transparent, black 30%, black 70%, transparent);
             -webkit-mask-image: linear-gradient(to bottom, transparent, black 30%, black 70%, transparent);
@@ -64,7 +80,6 @@
         .text-role { font-size: clamp(2.5rem, 8vw, 4rem); font-weight: 900; letter-spacing: -2px; text-transform: uppercase; }
         .text-word { font-size: clamp(1.5rem, 6vw, 3rem); font-weight: 300; white-space: nowrap; width: 100%; overflow: hidden; text-overflow: ellipsis; }
         
-        /* Role Colors */
         .role-peasant { color: var(--peasant-color); }
         .role-gifted { color: var(--gifted-color); }
         .role-rich { color: var(--rich-color); }
@@ -73,19 +88,33 @@
         .role-history { color: var(--history-color); text-shadow: 0 0 20px #fff, 0 0 40px #fff; animation: pulse 2s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
 
-        /* --- Panels --- */
         .panel { position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: #000; z-index: 100; padding: 40px 24px; display: none; overflow-y: auto; }
         .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #222; padding-bottom: 10px; }
         
-        .controls { display: flex; flex-direction: column; align-items: center; gap: 15px; width: 100%; }
-        .roll-btn { background: #fff; color: #000; border: none; padding: 18px 60px; font-weight: 900; letter-spacing: 4px; text-transform: uppercase; cursor: pointer; transition: 0.2s; border-radius: 4px; }
+        .controls { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+        
+        .roll-btn-wrapper { position: relative; }
+        .roll-count-badge { 
+            position: absolute; 
+            top: -8px; 
+            right: -12px; 
+            background: #e74c3c; 
+            color: #fff; 
+            font-size: 11px; 
+            font-weight: 900; 
+            padding: 4px 8px; 
+            border-radius: 20px; 
+            border: 2px solid #000;
+            z-index: 5;
+        }
+
+        .roll-btn { background: #fff; color: #000; border: none; padding: 18px 60px; font-weight: 900; letter-spacing: 4px; text-transform: uppercase; cursor: pointer; transition: 0.2s; border-radius: 4px; position: relative; }
         .roll-btn:disabled { opacity: 0.3; cursor: not-allowed; }
         .roll-btn.auto-active { background: #e74c3c; color: #fff; }
         
         .icon-btn { background: #111; border: 1px solid #222; color: #fff; width: 56px; height: 56px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .icon-btn:hover { background: #1a1a1a; }
 
-        /* --- Admin UI --- */
         .admin-row { background: #111; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #222; }
         .admin-row h4 { margin: 0 0 12px 0; font-size: 11px; text-transform: uppercase; color: #888; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
         select, input { background: #000; color: #fff; border: 1px solid #333; padding: 12px; width: 100%; margin-bottom: 10px; border-radius: 6px; font-family: inherit; font-size: 14px; }
@@ -97,19 +126,25 @@
         .inv-card { background: #0a0a0a; padding: 15px; border-radius: 8px; border: 1px solid #1a1a1a; }
 
         .hidden-section { opacity: 0; pointer-events: none; }
-        .countdown-container { display: flex; flex-direction: column; align-items: center; gap: 5px; min-height: 40px; margin-top: 10px; }
+        .countdown-container { display: flex; flex-direction: column; align-items: center; gap: 5px; min-height: 50px; }
         .countdown-item { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 11px; letter-spacing: 1px; color: #f1c40f; }
-        .speed-text { color: #3498db; }
+        .timer-label { font-size: 9px; color: #444; text-transform: uppercase; margin-bottom: 2px; }
+        .next-roll-timer { font-size: 10px; color: #666; }
         
         .danger-btn { background: #2a1111; color: #e74c3c; border: 1px solid #451a1a; padding: 10px; width: 100%; border-radius: 6px; cursor: pointer; font-size: 11px; text-transform: uppercase; font-weight: 700; }
+        .abuse-btn { background: #1a1a1a; color: #3498db; border: 1px solid #1e3a5f; padding: 10px; width: 100%; border-radius: 6px; cursor: pointer; font-size: 11px; text-transform: uppercase; font-weight: 700; margin-top: 5px; }
     </style>
 </head>
 <body>
 
+    <div class="forced-timer-container">
+        <div id="forcedProgressBar"></div>
+    </div>
+
     <div class="app-container" id="app">
         <div id="mainStage" class="stage-centered">
             <div style="width: 100%; display: flex; flex-direction: column; align-items: center;">
-                <div class="label">Current Role</div>
+                <div class="label" id="stageRoleLabel">Current Role</div>
                 <div class="reel-container mask-vertical">
                     <div id="roleReel" class="reel-strip text-role">
                         <div class="reel-item">?</div>
@@ -128,10 +163,18 @@
         </div>
 
         <div class="controls">
-            <button id="rollBtn" class="roll-btn">Roll</button>
-            <div class="countdown-container" id="countdownArea"></div>
+            <div class="roll-btn-wrapper">
+                <div id="rollBadge" class="roll-count-badge">0</div>
+                <button id="rollBtn" class="roll-btn">Roll</button>
+            </div>
             
-            <div style="display: flex; gap: 16px; margin-top: 10px;">
+            <div class="countdown-container" id="countdownArea">
+                <div id="globalMods"></div>
+                <div><div class="timer-label">Regen</div><div id="regenTimer" class="next-roll-timer"></div></div>
+                <div><div class="timer-label">Forced Reroll</div><div id="forcedTimerText" class="next-roll-timer">--:--</div></div>
+            </div>
+            
+            <div style="display: flex; gap: 16px; margin-top: 5px;">
                 <button class="icon-btn" onclick="togglePanel('inventoryPanel')">
                     <i data-lucide="package"></i>
                 </button>
@@ -139,13 +182,12 @@
                     <i data-lucide="refresh-cw"></i>
                 </button>
                 <button class="icon-btn" onclick="togglePanel('adminPanel')">
-                    <i data-lucide="shield-check"></i>
+                    <i data-lucide="shield-alert"></i>
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Inventory Panel -->
     <div id="inventoryPanel" class="panel">
         <div class="panel-header">
             <h2 style="margin:0; font-weight: 900;">INVENTORY</h2>
@@ -156,10 +198,9 @@
         <div id="inventoryGrid" class="inventory-grid"></div>
     </div>
 
-    <!-- Admin Panel -->
     <div id="adminPanel" class="panel">
         <div class="panel-header">
-            <h2 style="margin:0; font-weight: 900; color: #e74c3c;">GLOBAL ADMIN</h2>
+            <h2 style="margin:0; font-weight: 900; color: #e74c3c;">ADMIN ABUSE</h2>
             <button style="background:none; border:none; color:#fff; cursor:pointer;" onclick="togglePanel('adminPanel')">
                 <i data-lucide="x"></i>
             </button>
@@ -167,37 +208,12 @@
         
         <div class="admin-section">
             <div class="admin-row">
-                <h4><i data-lucide="trending-up" size="14"></i> Global Luck Boost</h4>
+                <h4><i data-lucide="gauge" size="14"></i> Global Speed Boost</h4>
                 <div style="display: flex; gap: 10px;">
-                    <input type="number" id="luckValue" value="2" placeholder="Luck x">
-                    <input type="number" id="luckTime" value="60" placeholder="Duration (s)">
+                    <input type="number" id="speedValue" value="0.2" step="0.1" placeholder="Roll Duration (s)">
+                    <input type="number" id="speedTime" value="300" placeholder="Seconds">
                 </div>
-                <button class="roll-btn" style="width:100%; padding: 12px; font-size: 11px;" onclick="applyGlobalEvent('luck')">Start Luck Event</button>
-            </div>
-
-            <div class="admin-row">
-                <h4><i data-lucide="zap" size="14"></i> Global Speed Boost</h4>
-                <div style="display: flex; gap: 10px;">
-                    <input type="number" id="speedValue" value="0.5" step="0.1" placeholder="Roll Duration (s)">
-                    <input type="number" id="speedTime" value="60" placeholder="Duration (s)">
-                </div>
-                <button class="roll-btn" style="width:100%; padding: 12px; font-size: 11px;" onclick="applyGlobalEvent('speed')">Start Speed Event</button>
-            </div>
-
-            <div class="admin-row">
-                <h4><i data-lucide="target" size="14"></i> Force Next Roll</h4>
-                <select id="forceRole">
-                    <option value="none">Normal RNG</option>
-                    <option value="stealer">Stealer</option>
-                    <option value="peasant">Peasant</option>
-                    <option value="norole">No Role</option>
-                    <option value="gifted">Gifted</option>
-                    <option value="rich">Rich</option>
-                    <option value="wealthy">Wealthy</option>
-                    <option value="king">King</option>
-                    <option value="history">History</option>
-                </select>
-                <input type="number" id="spoofWords" placeholder="Custom Word Amount">
+                <button class="abuse-btn" onclick="applyGlobalEvent('speed')">Apply Speed Boost</button>
             </div>
 
             <div class="admin-row">
@@ -206,8 +222,28 @@
             </div>
 
             <div class="admin-row">
-                <h4><i data-lucide="database" size="14"></i> Data</h4>
-                <button class="danger-btn" onclick="clearInventory()">Wipe All Progress</button>
+                <h4><i data-lucide="timer-off" size="14"></i> Reroll Manipulation</h4>
+                <button class="abuse-btn" onclick="abuseForceReroll()">Instant Forced Reroll (Free)</button>
+                <button class="abuse-btn" style="color: #e67e22; border-color: #e67e22;" onclick="abuseAddRolls(5)">+5 Manual Rolls</button>
+                <button id="infRollBtn" class="toggle-btn" style="width:100%; margin-top: 10px;" onclick="abuseToggleInfinite()">Infinite Rolls: OFF</button>
+            </div>
+
+            <div class="admin-row">
+                <h4><i data-lucide="gift" size="14"></i> Instant Give Role</h4>
+                <select id="giveRoleType"></select>
+                <input type="number" id="giveRoleWords" placeholder="Custom Word Count">
+                <button class="abuse-btn" onclick="abuseGiveRole()">Add to Inventory</button>
+            </div>
+
+            <div class="admin-row">
+                <h4><i data-lucide="trending-up" size="14"></i> Global Luck</h4>
+                <input type="number" id="luckValue" value="10" placeholder="Multiplier">
+                <button class="roll-btn" style="width:100%; padding: 12px; font-size: 11px;" onclick="applyGlobalEvent('luck')">Start Luck 5m</button>
+            </div>
+
+            <div class="admin-row">
+                <h4><i data-lucide="database" size="14"></i> System</h4>
+                <button class="danger-btn" onclick="clearInventory()">Full Wipe</button>
             </div>
         </div>
     </div>
@@ -224,13 +260,21 @@
             { id: 'history', name: "History", min: 999999999, max: 999999999, weight: 0.2, class: "role-history" }
         ];
 
+        const REGEN_TIME = 30 * 60 * 1000;
+        const FORCE_REROLL_TIME = 45 * 60 * 1000;
+        const MAX_ROLLS = 3;
+
         let state = {
             inventory: {},
+            rolls: MAX_ROLLS,
+            lastRegen: Date.now(),
+            lastForcedReroll: Date.now(),
+            infiniteRolls: false,
             isRolling: false,
             isAutoRolling: false,
             stopFilters: ['king', 'history'],
-            currentRole: null, // Persistent Current Role
-            currentWords: null, // Persistent Word Count
+            currentRole: null,
+            currentWords: null,
             events: {
                 luck: { multiplier: 1, expires: 0 },
                 speed: { duration: 1.8, expires: 0 }
@@ -239,9 +283,189 @@
 
         function togglePanel(id) {
             const p = document.getElementById(id);
-            p.style.display = p.style.display === 'block' ? 'none' : 'block';
-            if(id === 'inventoryPanel') renderInventory();
-            if(id === 'adminPanel') renderAdmin();
+            const isClosing = p.style.display === 'block';
+            p.style.display = isClosing ? 'none' : 'block';
+            if(!isClosing) {
+                if(id === 'inventoryPanel') renderInventory();
+                if(id === 'adminPanel') renderAdmin();
+            }
+        }
+
+        function renderAdmin() {
+            document.getElementById('stopFilters').innerHTML = ROLES.map(r => `
+                <button class="toggle-btn ${state.stopFilters.includes(r.id) ? 'toggle-active' : ''}" onclick="toggleFilter('${r.id}')">
+                    ${r.name}
+                </button>
+            `).join('');
+            
+            document.getElementById('giveRoleType').innerHTML = ROLES.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+        }
+
+        function toggleFilter(id) {
+            state.stopFilters = state.stopFilters.includes(id) ? state.stopFilters.filter(f => f !== id) : [...state.stopFilters, id];
+            renderAdmin();
+            save();
+        }
+
+        function generateResult() {
+            const currentLuck = Date.now() < state.events.luck.expires ? state.events.luck.multiplier : 1;
+            const weights = ROLES.map(r => (r.weight < 10) ? r.weight * currentLuck : r.weight);
+            const totalWeight = weights.reduce((s, w) => s + w, 0);
+            
+            let rValue = Math.random() * totalWeight;
+            let role;
+            for (let i = 0; i < ROLES.length; i++) {
+                if (rValue < weights[i]) { role = ROLES[i]; break; }
+                rValue -= weights[i];
+            }
+            const words = Math.floor(Math.random() * (role.max - role.min + 1)) + role.min;
+            return { role, words };
+        }
+
+        async function startRoll(isFree = false) {
+            if (state.isRolling) return;
+            if (!isFree && !state.infiniteRolls && state.rolls <= 0) {
+                toggleAutoRoll(); // Stop auto roll if out of rolls
+                return;
+            }
+
+            state.isRolling = true;
+            if (!isFree && !state.infiniteRolls) state.rolls--;
+            
+            document.getElementById('rollBtn').disabled = true;
+            document.getElementById('wordSection').classList.add('hidden-section');
+            document.getElementById('mainStage').classList.add('stage-centered');
+            document.getElementById('stageRoleLabel').textContent = isFree ? "FORCED REROLL" : "Current Role";
+            document.getElementById('stageRoleLabel').style.color = isFree ? "#3498db" : "rgba(255,255,255,0.3)";
+
+            const result = generateResult();
+            const finalWords = result.words.toLocaleString();
+
+            await animateReel(document.getElementById('roleReel'), result.role.name, false, result.role);
+            document.getElementById('mainStage').classList.remove('stage-centered');
+            await new Promise(r => setTimeout(r, 200));
+            document.getElementById('wordSection').classList.remove('hidden-section');
+            await animateReel(document.getElementById('wordReel'), finalWords, true, result.role);
+
+            state.currentRole = result.role;
+            state.currentWords = finalWords;
+            updateInventory(result.role.id, result.words);
+            
+            if (isFree) state.lastForcedReroll = Date.now();
+
+            save();
+            state.isRolling = false;
+            document.getElementById('rollBtn').disabled = false;
+
+            if(state.isAutoRolling && !isFree) {
+                if(state.stopFilters.includes(result.role.id)) {
+                    toggleAutoRoll();
+                } else {
+                    setTimeout(startRoll, 400);
+                }
+            }
+        }
+
+        function animateReel(el, finalValue, isWords, roleContext = null) {
+            const count = 30;
+            const duration = Date.now() < state.events.speed.expires ? state.events.speed.duration : 1.8;
+            let items = [];
+            for (let i = 0; i < count - 1; i++) {
+                if (isWords) {
+                    // Critical fix: Word reel only shows numbers possible for that role
+                    const fakeVal = Math.floor(Math.random() * (roleContext.max - roleContext.min + 1)) + roleContext.min;
+                    items.push(fakeVal.toLocaleString());
+                } else {
+                    const r = ROLES[Math.floor(Math.random() * ROLES.length)];
+                    items.push(`<span class="${r.class}">${r.name}</span>`);
+                }
+            }
+            items.push(isWords ? finalValue : `<span class="${roleContext.class}">${finalValue}</span>`);
+            el.style.transition = 'none';
+            el.style.transform = 'translateY(0px)';
+            el.innerHTML = items.map(item => `<div class="reel-item">${item}</div>`).join('');
+            el.offsetHeight; 
+            el.style.transition = `transform ${duration}s cubic-bezier(0.1, 0, 0.1, 1)`;
+            el.style.transform = `translateY(-${(count - 1) * 120}px)`;
+            return new Promise(r => setTimeout(r, (duration * 1000) + 100));
+        }
+
+        function updateInventory(roleId, words) {
+            if(!state.inventory[roleId]) state.inventory[roleId] = { count: 0, maxWords: 0 };
+            state.inventory[roleId].count++;
+            if(words > state.inventory[roleId].maxWords) state.inventory[roleId].maxWords = words;
+        }
+
+        function abuseGiveRole() {
+            const id = document.getElementById('giveRoleType').value;
+            const words = parseInt(document.getElementById('giveRoleWords').value) || 0;
+            updateInventory(id, words);
+            save();
+            renderInventory();
+        }
+
+        function abuseAddRolls(n) { state.rolls += n; save(); }
+
+        function abuseToggleInfinite() {
+            state.infiniteRolls = !state.infiniteRolls;
+            document.getElementById('infRollBtn').textContent = `Infinite Rolls: ${state.infiniteRolls ? 'ON' : 'OFF'}`;
+            document.getElementById('infRollBtn').classList.toggle('toggle-active', state.infiniteRolls);
+            save();
+        }
+
+        function abuseForceReroll() { togglePanel('adminPanel'); startRoll(true); }
+
+        function applyGlobalEvent(type) {
+            if(type === 'luck') {
+                const val = document.getElementById('luckValue').value;
+                state.events.luck = { multiplier: parseFloat(val), expires: Date.now() + (300 * 1000) };
+            } else if(type === 'speed') {
+                const val = document.getElementById('speedValue').value;
+                const time = document.getElementById('speedTime').value;
+                state.events.speed = { duration: parseFloat(val), expires: Date.now() + (parseInt(time) * 1000) };
+            }
+            save();
+            togglePanel('adminPanel');
+        }
+
+        function toggleAutoRoll() {
+            state.isAutoRolling = !state.isAutoRolling;
+            document.getElementById('autoRollToggle').classList.toggle('auto-active', state.isAutoRolling);
+            if(state.isAutoRolling && !state.isRolling) startRoll();
+        }
+
+        function save() { localStorage.setItem('roleRNG_v8_refined', JSON.stringify(state)); }
+
+        function updateTick() {
+            const now = Date.now();
+            if (state.rolls < MAX_ROLLS) {
+                const elapsed = now - state.lastRegen;
+                if (elapsed >= REGEN_TIME) {
+                    state.rolls = Math.min(MAX_ROLLS, state.rolls + Math.floor(elapsed / REGEN_TIME));
+                    state.lastRegen = now - (elapsed % REGEN_TIME);
+                }
+                const rem = REGEN_TIME - (now - state.lastRegen);
+                document.getElementById('regenTimer').textContent = `${Math.floor(rem/60000)}:${Math.floor((rem%60000)/1000).toString().padStart(2,'0')}`;
+            } else {
+                document.getElementById('regenTimer').textContent = "FULL";
+                state.lastRegen = now;
+            }
+
+            const forcedElapsed = now - state.lastForcedReroll;
+            if (forcedElapsed >= FORCE_REROLL_TIME && !state.isRolling) startRoll(true);
+            const forcedRem = Math.max(0, FORCE_REROLL_TIME - forcedElapsed);
+            document.getElementById('forcedProgressBar').style.width = Math.min(100, (forcedElapsed / FORCE_REROLL_TIME) * 100) + '%';
+            document.getElementById('forcedTimerText').textContent = `${Math.floor(forcedRem/60000)}:${Math.floor((forcedRem%60000)/1000).toString().padStart(2,'0')}`;
+
+            document.getElementById('rollBadge').textContent = state.infiniteRolls ? '∞' : state.rolls;
+            document.getElementById('rollBadge').style.background = state.rolls === 0 && !state.infiniteRolls ? '#555' : '#e74c3c';
+
+            let modHtml = "";
+            if(state.events.luck.expires > now) modHtml += `<div class="countdown-item">LUCK x${state.events.luck.multiplier}: ${Math.ceil((state.events.luck.expires - now)/1000)}s</div>`;
+            if(state.events.speed.expires > now) modHtml += `<div class="countdown-item" style="color:#3498db">SPEED ${state.events.speed.duration}s: ${Math.ceil((state.events.speed.expires - now)/1000)}s</div>`;
+            document.getElementById('globalMods').innerHTML = modHtml;
+
+            requestAnimationFrame(updateTick);
         }
 
         function renderInventory() {
@@ -257,151 +481,23 @@
             }).join('');
         }
 
-        function renderAdmin() {
-            document.getElementById('stopFilters').innerHTML = ROLES.map(r => `
-                <button class="toggle-btn ${state.stopFilters.includes(r.id) ? 'toggle-active' : ''}" onclick="toggleSetting('stopFilters', '${r.id}')">
-                    ${r.name}
-                </button>
-            `).join('');
-        }
-
-        function toggleSetting(key, id) {
-            state[key] = state[key].includes(id) ? state[key].filter(d => d !== id) : [...state[key], id];
-            renderAdmin();
-            save();
-        }
-
-        function toggleAutoRoll() {
-            state.isAutoRolling = !state.isAutoRolling;
-            document.getElementById('autoRollToggle').classList.toggle('auto-active', state.isAutoRolling);
-            if(state.isAutoRolling && !state.isRolling) startRoll();
-        }
-
-        function applyGlobalEvent(type) {
-            const valInput = document.getElementById(type + 'Value').value;
-            const timeInput = document.getElementById(type + 'Time').value;
-            const duration = parseInt(timeInput) || 30;
-            
-            if(type === 'luck') state.events.luck = { multiplier: parseFloat(valInput), expires: Date.now() + (duration * 1000) };
-            if(type === 'speed') state.events.speed = { duration: parseFloat(valInput), expires: Date.now() + (duration * 1000) };
-            
-            save();
-            togglePanel('adminPanel');
-        }
-
-        async function animateReel(el, finalValue, isWords, roleContext = null) {
-            const count = 30;
-            const ITEM_HEIGHT = 120;
-            
-            const duration = Date.now() < state.events.speed.expires ? state.events.speed.duration : 1.8;
-            
-            let items = [];
-            for (let i = 0; i < count - 1; i++) {
-                if (isWords) {
-                    const val = Math.floor(Math.random() * (roleContext.max - roleContext.min + 1)) + roleContext.min;
-                    items.push(val.toLocaleString());
-                } else {
-                    const r = ROLES[Math.floor(Math.random() * ROLES.length)];
-                    items.push(`<span class="${r.class}">${r.name}</span>`);
-                }
-            }
-            items.push(isWords ? finalValue : `<span class="${roleContext.class}">${finalValue}</span>`);
-            
-            el.style.transition = 'none';
-            el.style.transform = 'translateY(0px)';
-            el.innerHTML = items.map(item => `<div class="reel-item">${item}</div>`).join('');
-            el.offsetHeight; 
-            
-            el.style.transition = `transform ${duration}s cubic-bezier(0.1, 0, 0.1, 1)`;
-            el.style.transform = `translateY(-${(count - 1) * ITEM_HEIGHT}px)`;
-            return new Promise(r => setTimeout(r, (duration * 1000) + 100));
-        }
-
-        async function startRoll() {
-            if (state.isRolling) return;
-            state.isRolling = true;
-            document.getElementById('rollBtn').disabled = true;
-            document.getElementById('wordSection').classList.add('hidden-section');
-            document.getElementById('mainStage').classList.add('stage-centered');
-
-            let selectedRole;
-            const forceId = document.getElementById('forceRole').value;
-            const spoofVal = parseInt(document.getElementById('spoofWords').value) || 0;
-            
-            if(forceId !== 'none') {
-                selectedRole = ROLES.find(r => r.id === forceId);
-            } else {
-                const currentLuck = Date.now() < state.events.luck.expires ? state.events.luck.multiplier : 1;
-                const weights = ROLES.map(r => (r.weight < 10) ? r.weight * currentLuck : r.weight);
-                const totalWeight = weights.reduce((s, w) => s + w, 0);
-                let rValue = Math.random() * totalWeight;
-                for (let i = 0; i < ROLES.length; i++) {
-                    if (rValue < weights[i]) {
-                        selectedRole = ROLES[i];
-                        break;
-                    }
-                    rValue -= weights[i];
-                }
-            }
-
-            const wordVal = spoofVal > 0 ? spoofVal : Math.floor(Math.random() * (selectedRole.max - selectedRole.min + 1)) + selectedRole.min;
-            const finalWords = wordVal.toLocaleString();
-
-            await animateReel(document.getElementById('roleReel'), selectedRole.name, false, selectedRole);
-            document.getElementById('mainStage').classList.remove('stage-centered');
-            await new Promise(r => setTimeout(r, 200));
-            document.getElementById('wordSection').classList.remove('hidden-section');
-            await animateReel(document.getElementById('wordReel'), finalWords, true, selectedRole);
-
-            // SAVE CURRENT ROLL STATE
-            state.currentRole = selectedRole;
-            state.currentWords = finalWords;
-
-            if(!state.inventory[selectedRole.id]) state.inventory[selectedRole.id] = { count: 0, maxWords: 0 };
-            state.inventory[selectedRole.id].count++;
-            if(wordVal > state.inventory[selectedRole.id].maxWords) state.inventory[selectedRole.id].maxWords = wordVal;
-
-            save(); // Persistent save
-            state.isRolling = false;
-            document.getElementById('rollBtn').disabled = false;
-
-            if(state.isAutoRolling) {
-                if(state.stopFilters.includes(selectedRole.id)) toggleAutoRoll();
-                else setTimeout(startRoll, 400);
-            }
-        }
-
-        function save() { localStorage.setItem('roleRNG_v5_final', JSON.stringify(state)); }
-
-        function updateTick() {
-            const area = document.getElementById('countdownArea');
-            let html = "";
-            const now = Date.now();
-
-            if(state.events.luck.expires > now) {
-                const s = Math.ceil((state.events.luck.expires - now)/1000);
-                html += `<div class="countdown-item">GLOBAL LUCK x${state.events.luck.multiplier}: ${s}s</div>`;
-            }
-            if(state.events.speed.expires > now) {
-                const s = Math.ceil((state.events.speed.expires - now)/1000);
-                html += `<div class="countdown-item speed-text">GLOBAL SPEED BOOST: ${s}s</div>`;
-            }
-            area.innerHTML = html;
-            requestAnimationFrame(updateTick);
-        }
-
-        function clearInventory() {
-            if(confirm("Wipe all progress and roles?")) {
-                localStorage.removeItem('roleRNG_v5_final');
-                location.reload();
-            }
-        }
+        function clearInventory() { if(confirm("WIPE ALL?")) { localStorage.removeItem('roleRNG_v8_refined'); location.reload(); } }
 
         window.onload = () => {
-            const saved = localStorage.getItem('roleRNG_v5_final');
+            const saved = localStorage.getItem('roleRNG_v8_refined');
             if(saved) {
                 state = {...state, ...JSON.parse(saved), isRolling: false, isAutoRolling: false};
-                // RESTORE VIEW
+                const now = Date.now();
+                const offlineTime = now - state.lastForcedReroll;
+                if (offlineTime >= FORCE_REROLL_TIME) {
+                    const missed = Math.floor(offlineTime / FORCE_REROLL_TIME);
+                    for(let i=0; i<missed; i++) {
+                        const res = generateResult();
+                        updateInventory(res.role.id, res.words);
+                        if (i === missed - 1) { state.currentRole = res.role; state.currentWords = res.words.toLocaleString(); }
+                    }
+                    state.lastForcedReroll = now - (offlineTime % FORCE_REROLL_TIME);
+                }
                 if(state.currentRole) {
                     const r = state.currentRole;
                     document.getElementById('roleReel').innerHTML = `<div class="reel-item"><span class="${r.class}">${r.name}</span></div>`;
@@ -409,12 +505,16 @@
                     document.getElementById('wordSection').classList.remove('hidden-section');
                     document.getElementById('mainStage').classList.remove('stage-centered');
                 }
+                if(state.infiniteRolls) {
+                    document.getElementById('infRollBtn').textContent = `Infinite Rolls: ON`;
+                    document.getElementById('infRollBtn').classList.add('toggle-active');
+                }
             }
             lucide.createIcons();
             updateTick();
         };
 
-        document.getElementById('rollBtn').onclick = startRoll;
+        document.getElementById('rollBtn').onclick = () => startRoll();
     </script>
 </body>
 </html>
