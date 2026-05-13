@@ -42,7 +42,6 @@
             min-height: 100vh;
         }
 
-        /* Top Progress Bar */
         .forced-timer-container {
             width: 100%;
             height: 4px;
@@ -193,7 +192,6 @@
         </div>
     </div>
 
-    <!-- Inventory Panel -->
     <div id="inventoryPanel" class="panel">
         <div class="panel-header">
             <h2 style="margin:0; font-weight: 900;">INVENTORY</h2>
@@ -202,7 +200,6 @@
         <div id="inventoryGrid" class="inventory-grid"></div>
     </div>
 
-    <!-- Admin Panel -->
     <div id="adminPanel" class="panel">
         <div class="panel-header">
             <h2 style="margin:0; font-weight: 900; color: #e74c3c;">ADMIN ABUSE</h2>
@@ -242,7 +239,7 @@
 
         <div class="admin-row">
             <h4><i data-lucide="zap"></i> System Controls</h4>
-            <button class="abuse-btn" onclick="startRoll(true)">Forced Reroll Now</button>
+            <button class="abuse-btn" onclick="triggerForcedReroll()">Forced Reroll Now</button>
             <button id="infRollBtn" class="toggle-btn" style="width:100%; margin-top:8px;" onclick="toggleInfinite()">Infinite Rolls: OFF</button>
         </div>
 
@@ -263,7 +260,6 @@
             { id: 'history', name: "History", min: 999999999, max: 999999999, weight: 0.2, class: "role-history" }
         ];
 
-        // Absolute Schedule
         const SCHEDULE = ["07:40", "08:21", "09:07", "09:53", "10:39", "11:25", "12:11", "12:57", "13:43", "14:29"];
         const STANDBY_INTERVAL = 45 * 60 * 1000;
         const REGEN_TIME = 30 * 60 * 1000;
@@ -273,7 +269,7 @@
             inventory: {},
             rolls: MAX_ROLLS,
             lastRegen: Date.now(),
-            lastForcedTimestamp: Date.now(),
+            lastForcedTimestamp: 0, 
             infiniteRolls: false,
             luck: 1, luckExpiry: 0,
             rollSpeed: 1.8, speedExpiry: 0,
@@ -297,29 +293,37 @@
                 return new Date(year, month, day, h, m, 0).getTime();
             });
             const nextScheduled = times.find(t => t > est.getTime());
-            return nextScheduled ? { type: 'scheduled', time: nextScheduled } : { type: 'interval', time: state.lastForcedTimestamp + STANDBY_INTERVAL };
+            
+            if (nextScheduled) return { type: 'scheduled', time: nextScheduled };
+            
+            const lastScheduled = times[times.length - 1];
+            let nextInt = lastScheduled + STANDBY_INTERVAL;
+            while(nextInt < est.getTime()) nextInt += STANDBY_INTERVAL;
+            return { type: 'interval', time: nextInt };
         }
 
         function catchUpAFK() {
             const est = getEST().getTime();
             const last = state.lastForcedTimestamp;
-            let missedCount = 0;
+            if (last === 0) {
+                state.lastForcedTimestamp = est;
+                save();
+                return;
+            }
 
-            // Check Schedule
-            const year = new Date(last).getFullYear();
-            const month = new Date(last).getMonth();
-            const day = new Date(last).getDate();
+            let missedCount = 0;
+            const year = new Date(last).getFullYear(), month = new Date(last).getMonth(), day = new Date(last).getDate();
+            
             SCHEDULE.forEach(s => {
                 const [h, m] = s.split(':').map(Number);
                 const t = new Date(year, month, day, h, m, 0).getTime();
                 if (t > last && t <= est) missedCount++;
             });
 
-            // Check Standard Intervals if past schedule range
-            const lastScheduledTime = new Date(year, month, day, 14, 29, 0).getTime();
-            if (last > lastScheduledTime) {
-                const elapsed = est - last;
-                missedCount += Math.floor(elapsed / STANDBY_INTERVAL);
+            const lastSched = new Date(year, month, day, 14, 29, 0).getTime();
+            if (est > lastSched) {
+                const startPoint = Math.max(last, lastSched);
+                missedCount += Math.floor((est - startPoint) / STANDBY_INTERVAL);
             }
 
             if (missedCount > 0) {
@@ -370,24 +374,29 @@
                 for (let r of weighted) { if (rv < r.ew) { resRole = r; break; } rv -= r.ew; }
             }
 
-            const words = Math.floor(Math.random() * (resRole.max - resRole.min + 1)) + resRole.min;
+            const wordsValue = Math.floor(Math.random() * (resRole.max - resRole.min + 1)) + resRole.min;
             await animateReel(document.getElementById('roleReel'), resRole.name, false, resRole);
             document.getElementById('mainStage').classList.remove('stage-centered');
             await new Promise(r => setTimeout(r, 200));
             document.getElementById('wordSection').style.opacity = '1';
-            await animateReel(document.getElementById('wordReel'), words.toLocaleString(), true, resRole);
+            await animateReel(document.getElementById('wordReel'), wordsValue.toLocaleString(), true, resRole);
 
             state.currentRole = resRole;
-            state.currentWords = words.toLocaleString();
+            state.currentWords = wordsValue.toLocaleString();
             if(!state.inventory[resRole.id]) state.inventory[resRole.id] = { count: 0, maxWords: 0 };
             state.inventory[resRole.id].count++;
-            if(words > state.inventory[resRole.id].maxWords) state.inventory[resRole.id].maxWords = words;
+            if(wordsValue > state.inventory[resRole.id].maxWords) state.inventory[resRole.id].maxWords = wordsValue;
             
-            if (isFree) state.lastForcedTimestamp = Date.now();
+            if (isFree) state.lastForcedTimestamp = getEST().getTime();
             save();
             state.isRolling = false;
             document.getElementById('rollBtn').disabled = false;
             if(state.isAutoRolling && !isFree) setTimeout(startRoll, 400);
+        }
+
+        function triggerForcedReroll() {
+            if(state.isRolling) return;
+            startRoll(true);
         }
 
         function animateReel(el, val, isWords, role) {
@@ -411,7 +420,6 @@
         function updateTick() {
             const now = Date.now(), est = getEST();
             
-            // Regen
             if (state.rolls < MAX_ROLLS) {
                 const elapsed = now - state.lastRegen;
                 if (elapsed >= REGEN_TIME) {
@@ -425,12 +433,12 @@
                 state.lastRegen = now;
             }
 
-            // Forced Roll Logic
             const next = getNextForcedTime();
             const diff = next.time - est.getTime();
-            if (diff <= 0 && !state.isRolling) startRoll(true);
+            if (diff <= 0 && !state.isRolling) {
+                startRoll(true);
+            }
 
-            // UI
             let buffs = '';
             if (now < state.luckExpiry) buffs += `<div class="buff-badge buff-active">Luck ${state.luck}x (${Math.floor((state.luckExpiry-now)/1000)}s)</div>`;
             if (now < state.speedExpiry) buffs += `<div class="buff-badge buff-active">Speed ${state.rollSpeed}s (${Math.floor((state.speedExpiry-now)/1000)}s)</div>`;
@@ -479,10 +487,10 @@
             }).join('');
         }
 
-        function save() { localStorage.setItem('roleRNG_v15_afk', JSON.stringify(state)); }
+        function save() { localStorage.setItem('roleRNG_v16_final', JSON.stringify(state)); }
 
         window.onload = () => {
-            const saved = localStorage.getItem('roleRNG_v15_afk');
+            const saved = localStorage.getItem('roleRNG_v16_final');
             if(saved) {
                 state = {...state, ...JSON.parse(saved), isRolling: false, isAutoRolling: false};
                 if(state.currentRole) {
