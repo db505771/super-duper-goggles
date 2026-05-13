@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Role RNG Elite - Persistent Schedule</title>
+    <title>Role RNG Elite - Active Catchup</title>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&display=swap');
@@ -135,10 +135,13 @@
         .buff-badge { font-size: 9px; padding: 2px 6px; border-radius: 4px; background: #222; color: #888; font-weight: 700; }
         .buff-active { color: #3498db; background: rgba(52, 152, 219, 0.1); }
 
-        .history-item { font-size: 10px; color: #444; margin-top: 2px; }
+        .catchup-msg { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: #f1c40f; color: #000; font-size: 11px; font-weight: 900; padding: 4px 12px; border-radius: 20px; z-index: 100; animation: slideDown 0.5s forwards; }
+        @keyframes slideDown { from { top: -30px; } to { top: 10px; } }
     </style>
 </head>
 <body>
+
+    <div id="catchupAlert" style="display:none;" class="catchup-msg">CATCHING UP...</div>
 
     <div class="forced-timer-container">
         <div id="forcedProgressBar"></div>
@@ -175,7 +178,6 @@
                 <div id="buffIndicators" style="display: flex; gap: 8px; margin-bottom: 4px;"></div>
                 <div><div class="timer-label">Regen</div><div id="regenTimer" class="next-roll-timer">FULL</div></div>
                 <div><div class="timer-label">Next Forced Reroll</div><div id="forcedTimerText" class="next-roll-timer">--:--</div></div>
-                <div id="afkLog" class="history-item"></div>
             </div>
             
             <div style="display: flex; gap: 16px; margin-top: 5px;">
@@ -202,49 +204,42 @@
 
     <div id="adminPanel" class="panel">
         <div class="panel-header">
-            <h2 style="margin:0; font-weight: 900; color: #e74c3c;">ADMIN ABUSE</h2>
+            <h2 style="margin:0; font-weight: 900; color: #e74c3c;">ADMIN Master</h2>
             <button style="background:none; border:none; color:#fff;" onclick="togglePanel('adminPanel')"><i data-lucide="x"></i></button>
         </div>
         
         <div class="admin-row">
-            <h4><i data-lucide="clover"></i> Temporary Luck</h4>
+            <h4>Luck Multiplier</h4>
             <div class="admin-input-group">
-                <input type="number" id="luckInput" placeholder="Multiplier" value="100">
-                <input type="number" id="luckDuration" placeholder="Seconds" value="120">
+                <input type="number" id="luckInput" value="100">
+                <input type="number" id="luckDuration" value="120">
             </div>
-            <button class="abuse-btn" onclick="applyLuck()">Apply Luck</button>
+            <button class="abuse-btn" onclick="applyLuck()">Set Luck</button>
         </div>
 
         <div class="admin-row">
-            <h4><i data-lucide="gauge"></i> Temporary Speed</h4>
+            <h4>Roll Speed</h4>
             <div class="admin-input-group">
-                <input type="number" id="speedInput" placeholder="Sec (0.1)" step="0.1" value="0.2">
-                <input type="number" id="speedDuration" placeholder="Seconds" value="120">
+                <input type="number" id="speedInput" step="0.1" value="0.2">
+                <input type="number" id="speedDuration" value="120">
             </div>
-            <button class="abuse-btn" onclick="applySpeed()">Apply Speed</button>
+            <button class="abuse-btn" onclick="applySpeed()">Set Speed</button>
         </div>
 
         <div class="admin-row">
-            <h4><i data-lucide="target"></i> Force Next Role</h4>
-            <select id="rigSelect"></select>
-            <button class="abuse-btn" onclick="applyRig()">Rig Next Roll</button>
-            <div id="rigStatus" style="font-size:10px; color:#f1c40f; margin-top:5px;"></div>
+            <h4>Give Rolls</h4>
+            <input type="number" id="grantInput" value="50">
+            <button class="abuse-btn" onclick="grantRolls()">Grant</button>
         </div>
 
         <div class="admin-row">
-            <h4><i data-lucide="plus"></i> Add Manual Rolls</h4>
-            <input type="number" id="grantInput" value="25">
-            <button class="abuse-btn" onclick="grantRolls()">Grant Rolls</button>
+            <h4>Controls</h4>
+            <button class="abuse-btn" onclick="startRoll(true)">Force Reroll Now</button>
+            <button id="infRollBtn" class="toggle-btn" style="width:100%; margin-top:8px;" onclick="toggleInfinite()">Infinite: OFF</button>
         </div>
 
         <div class="admin-row">
-            <h4><i data-lucide="zap"></i> System Controls</h4>
-            <button class="abuse-btn" onclick="triggerForcedReroll()">Forced Reroll Now</button>
-            <button id="infRollBtn" class="toggle-btn" style="width:100%; margin-top:8px;" onclick="toggleInfinite()">Infinite Rolls: OFF</button>
-        </div>
-
-        <div class="admin-row">
-            <button class="danger-btn" onclick="localStorage.clear(); location.reload();">Hard Wipe Data</button>
+            <button class="danger-btn" onclick="localStorage.clear(); location.reload();">Clear All Data</button>
         </div>
     </div>
 
@@ -293,7 +288,6 @@
                 return new Date(year, month, day, h, m, 0).getTime();
             });
             const nextScheduled = times.find(t => t > est.getTime());
-            
             if (nextScheduled) return { type: 'scheduled', time: nextScheduled };
             
             const lastScheduled = times[times.length - 1];
@@ -302,7 +296,7 @@
             return { type: 'interval', time: nextInt };
         }
 
-        function catchUpAFK() {
+        async function catchUpCheck() {
             const est = getEST().getTime();
             const last = state.lastForcedTimestamp;
             if (last === 0) {
@@ -327,26 +321,13 @@
             }
 
             if (missedCount > 0) {
-                document.getElementById('afkLog').textContent = `Caught up on ${missedCount} missed forced rolls!`;
-                for(let i=0; i < missedCount; i++) silentRoll();
-                state.lastForcedTimestamp = est;
-                save();
+                document.getElementById('catchupAlert').style.display = 'block';
+                document.getElementById('catchupAlert').textContent = `CATCHING UP: ${missedCount} ROLLS...`;
+                for(let i=0; i < missedCount; i++) {
+                    await startRoll(true);
+                }
+                document.getElementById('catchupAlert').style.display = 'none';
             }
-        }
-
-        function silentRoll() {
-            const weights = ROLES.map(r => r.weight);
-            const totalWeight = weights.reduce((s, w) => s + w, 0);
-            let rValue = Math.random() * totalWeight;
-            let role;
-            for (let i = 0; i < ROLES.length; i++) {
-                if (rValue < weights[i]) { role = ROLES[i]; break; }
-                rValue -= weights[i];
-            }
-            const words = Math.floor(Math.random() * (role.max - role.min + 1)) + role.min;
-            if(!state.inventory[role.id]) state.inventory[role.id] = { count: 0, maxWords: 0 };
-            state.inventory[role.id].count++;
-            if(words > state.inventory[role.id].maxWords) state.inventory[role.id].maxWords = words;
         }
 
         async function startRoll(isFree = false) {
@@ -362,17 +343,11 @@
             document.getElementById('stageRoleLabel').textContent = isFree ? "FORCED REROLL" : "Current Role";
 
             let resRole;
-            if (state.riggedId) {
-                resRole = ROLES.find(r => r.id === state.riggedId);
-                state.riggedId = null;
-                updateRigUI();
-            } else {
-                const currentLuck = Date.now() < state.luckExpiry ? state.luck : 1;
-                const weighted = ROLES.map(r => ({ ...r, ew: r.weight * (r.weight < 15 ? currentLuck : 1) }));
-                const total = weighted.reduce((s, r) => s + r.ew, 0);
-                let rv = Math.random() * total;
-                for (let r of weighted) { if (rv < r.ew) { resRole = r; break; } rv -= r.ew; }
-            }
+            const currentLuck = Date.now() < state.luckExpiry ? state.luck : 1;
+            const weighted = ROLES.map(r => ({ ...r, ew: r.weight * (r.weight < 15 ? currentLuck : 1) }));
+            const total = weighted.reduce((s, r) => s + r.ew, 0);
+            let rv = Math.random() * total;
+            for (let r of weighted) { if (rv < r.ew) { resRole = r; break; } rv -= r.ew; }
 
             const wordsValue = Math.floor(Math.random() * (resRole.max - resRole.min + 1)) + resRole.min;
             await animateReel(document.getElementById('roleReel'), resRole.name, false, resRole);
@@ -392,11 +367,6 @@
             state.isRolling = false;
             document.getElementById('rollBtn').disabled = false;
             if(state.isAutoRolling && !isFree) setTimeout(startRoll, 400);
-        }
-
-        function triggerForcedReroll() {
-            if(state.isRolling) return;
-            startRoll(true);
         }
 
         function animateReel(el, val, isWords, role) {
@@ -455,8 +425,6 @@
         function applyLuck() { state.luck = parseFloat(document.getElementById('luckInput').value); state.luckExpiry = Date.now() + parseInt(document.getElementById('luckDuration').value)*1000; save(); }
         function applySpeed() { state.rollSpeed = parseFloat(document.getElementById('speedInput').value); state.speedExpiry = Date.now() + parseInt(document.getElementById('speedDuration').value)*1000; save(); }
         function grantRolls() { state.rolls += parseInt(document.getElementById('grantInput').value); save(); }
-        function applyRig() { state.riggedId = document.getElementById('rigSelect').value; updateRigUI(); save(); }
-        function updateRigUI() { document.getElementById('rigStatus').textContent = state.riggedId ? `RIGGED: ${state.riggedId.toUpperCase()}` : ""; }
         function toggleInfinite() { state.infiniteRolls = !state.infiniteRolls; document.getElementById('infRollBtn').classList.toggle('toggle-active', state.infiniteRolls); save(); }
         
         function togglePanel(id) {
@@ -464,10 +432,6 @@
             const isOpen = p.style.display === 'block';
             document.querySelectorAll('.panel').forEach(x => x.style.display = 'none');
             p.style.display = isOpen ? 'none' : 'block';
-            if(!isOpen && id === 'adminPanel') {
-                document.getElementById('rigSelect').innerHTML = ROLES.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
-                updateRigUI();
-            }
             if(!isOpen && id === 'inventoryPanel') renderInventory();
         }
 
@@ -487,10 +451,10 @@
             }).join('');
         }
 
-        function save() { localStorage.setItem('roleRNG_v16_final', JSON.stringify(state)); }
+        function save() { localStorage.setItem('roleRNG_v17_active', JSON.stringify(state)); }
 
         window.onload = () => {
-            const saved = localStorage.getItem('roleRNG_v16_final');
+            const saved = localStorage.getItem('roleRNG_v17_active');
             if(saved) {
                 state = {...state, ...JSON.parse(saved), isRolling: false, isAutoRolling: false};
                 if(state.currentRole) {
@@ -500,7 +464,7 @@
                     document.getElementById('mainStage').classList.remove('stage-centered');
                 }
             }
-            catchUpAFK();
+            catchUpCheck();
             lucide.createIcons();
             updateTick();
         };
