@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Role RNG Elite - Exact Schedule</title>
+    <title>Role RNG Elite - Admin Master</title>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&display=swap');
@@ -115,16 +115,26 @@
         .icon-btn { background: #111; border: 1px solid #222; color: #fff; width: 56px; height: 56px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .icon-btn:hover { background: #1a1a1a; }
 
+        .admin-row { background: #111; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #222; }
+        .admin-row h4 { margin: 0 0 12px 0; font-size: 11px; text-transform: uppercase; color: #888; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
+        .admin-input-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
+        input, select { background: #000; color: #fff; border: 1px solid #333; padding: 10px; width: 100%; margin-bottom: 8px; border-radius: 6px; font-family: inherit; font-size: 13px; }
+        
+        .toggle-btn { background: #111; border: 1px solid #333; color: #666; padding: 8px 12px; font-size: 11px; cursor: pointer; border-radius: 6px; flex: 1; min-width: 90px; text-align: center; }
+        .toggle-active { background: #fff; color: #000; border-color: #fff; font-weight: 700; }
+
         .inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
         .inv-card { background: #0a0a0a; padding: 15px; border-radius: 8px; border: 1px solid #1a1a1a; }
 
-        .hidden-section { opacity: 0; pointer-events: none; }
         .countdown-container { display: flex; flex-direction: column; align-items: center; gap: 5px; min-height: 50px; }
         .timer-label { font-size: 9px; color: #444; text-transform: uppercase; margin-bottom: 2px; }
         .next-roll-timer { font-size: 10px; color: #666; }
         
         .danger-btn { background: #2a1111; color: #e74c3c; border: 1px solid #451a1a; padding: 10px; width: 100%; border-radius: 6px; cursor: pointer; font-size: 11px; text-transform: uppercase; font-weight: 700; }
         .abuse-btn { background: #1a1a1a; color: #3498db; border: 1px solid #1e3a5f; padding: 10px; width: 100%; border-radius: 6px; cursor: pointer; font-size: 11px; text-transform: uppercase; font-weight: 700; margin-top: 5px; }
+        
+        .buff-badge { font-size: 9px; padding: 2px 6px; border-radius: 4px; background: #222; color: #888; font-weight: 700; }
+        .buff-active { color: #3498db; background: rgba(52, 152, 219, 0.1); }
     </style>
 </head>
 <body>
@@ -144,7 +154,7 @@
                 </div>
             </div>
 
-            <div id="wordSection" class="hidden-section">
+            <div id="wordSection" style="opacity: 0; pointer-events: none;">
                 <div class="label">Word Count</div>
                 <div class="reel-container mask-vertical">
                     <div id="wordReel" class="reel-strip text-word">
@@ -161,6 +171,8 @@
             </div>
             
             <div class="countdown-container">
+                <div id="buffIndicators" style="display: flex; gap: 8px; margin-bottom: 4px;"></div>
+                <div><div class="timer-label">Regen</div><div id="regenTimer" class="next-roll-timer">FULL</div></div>
                 <div><div class="timer-label">Next Forced Reroll</div><div id="forcedTimerText" class="next-roll-timer">--:--</div></div>
             </div>
             
@@ -190,13 +202,53 @@
 
     <div id="adminPanel" class="panel">
         <div class="panel-header">
-            <h2 style="margin:0; font-weight: 900; color: #e74c3c;">ADMIN</h2>
+            <h2 style="margin:0; font-weight: 900; color: #e74c3c;">ADMIN CONSOLE</h2>
             <button style="background:none; border:none; color:#fff; cursor:pointer;" onclick="togglePanel('adminPanel')">
                 <i data-lucide="x"></i>
             </button>
         </div>
-        <button class="abuse-btn" onclick="startRoll(true)">Force Reroll Now</button>
-        <button class="danger-btn" style="margin-top:20px;" onclick="clearInventory()">Wipe Data</button>
+        
+        <div class="admin-row">
+            <h4><i data-lucide="clover"></i> Temp Luck Multiplier</h4>
+            <div class="admin-input-group">
+                <input type="number" id="luckInput" placeholder="Luck (e.g. 50)" value="50">
+                <input type="number" id="luckDuration" placeholder="Seconds" value="60">
+            </div>
+            <button class="abuse-btn" onclick="applyTempLuck()">Apply Luck</button>
+        </div>
+
+        <div class="admin-row">
+            <h4><i data-lucide="gauge"></i> Temp Roll Speed</h4>
+            <div class="admin-input-group">
+                <input type="number" id="speedInput" placeholder="Sec (e.g. 0.2)" step="0.1" value="0.2">
+                <input type="number" id="speedDuration" placeholder="Seconds" value="60">
+            </div>
+            <button class="abuse-btn" onclick="applyTempSpeed()">Apply Fast Roll</button>
+        </div>
+
+        <div class="admin-row">
+            <h4><i data-lucide="plus-circle"></i> Grant Manual Rolls</h4>
+            <input type="number" id="grantInput" placeholder="Amount (e.g. 10)" value="10">
+            <button class="abuse-btn" onclick="grantRolls()">Add Rolls</button>
+        </div>
+
+        <div class="admin-row">
+            <h4><i data-lucide="target"></i> Rig Next Roll</h4>
+            <select id="rigSelect"></select>
+            <button class="abuse-btn" onclick="rigNext()">Apply Rig</button>
+            <div id="rigStatus" style="font-size: 10px; margin-top: 5px; color: #f1c40f;"></div>
+        </div>
+
+        <div class="admin-row">
+            <h4><i data-lucide="zap"></i> Global Controls</h4>
+            <button class="abuse-btn" onclick="abuseForceNow()">Instant Forced Reroll</button>
+            <button id="infRollBtn" class="toggle-btn" style="width:100%; margin-top:8px;" onclick="toggleInfinite()">Infinite Rolls: OFF</button>
+        </div>
+
+        <div class="admin-row">
+            <h4><i data-lucide="trash-2"></i> Danger Zone</h4>
+            <button class="danger-btn" onclick="clearInventory()">Wipe All Progress</button>
+        </div>
     </div>
 
     <script>
@@ -211,8 +263,7 @@
             { id: 'history', name: "History", min: 999999999, max: 999999999, weight: 0.2, class: "role-history" }
         ];
 
-        // Specific Schedule Strings
-        const SCHEDULE_STRS = ["07:40", "08:21", "09:07", "09:53", "10:39", "11:25", "12:11", "12:57", "13:43", "14:29"];
+        const SCHEDULE = ["07:40", "08:21", "09:07", "09:53", "10:39", "11:25", "12:11", "12:57", "13:43", "14:29"];
         const STANDBY_INTERVAL = 45 * 60 * 1000;
         const REGEN_TIME = 30 * 60 * 1000;
         const MAX_ROLLS = 3;
@@ -222,68 +273,83 @@
             rolls: MAX_ROLLS,
             lastRegen: Date.now(),
             lastForcedReroll: Date.now(),
+            infiniteRolls: false,
+            luck: 1,
+            luckExpiry: 0,
+            rollSpeed: 1.8,
+            speedExpiry: 0,
+            riggedId: null,
             isRolling: false,
             isAutoRolling: false,
             currentRole: null,
             currentWords: null
         };
 
-        // Forces time to Eastern Standard Time regardless of local clock
-        function getTrueEST() {
+        function getEST() {
             const now = new Date();
             const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-            return new Date(utc - (4 * 3600000)); // EDT (UTC-4) for current date
+            return new Date(utc - (4 * 3600000));
         }
 
         function getNextForcedTime() {
-            const est = getTrueEST();
-            const year = est.getFullYear();
-            const month = est.getMonth();
-            const day = est.getDate();
-
-            // Check the schedule list
-            const times = SCHEDULE_STRS.map(s => {
+            const est = getEST();
+            const year = est.getFullYear(), month = est.getMonth(), day = est.getDate();
+            const times = SCHEDULE.map(s => {
                 const [h, m] = s.split(':').map(Number);
                 return new Date(year, month, day, h, m, 0).getTime();
             });
-
             const nextScheduled = times.find(t => t > est.getTime());
-
-            if (nextScheduled) {
-                return { type: 'scheduled', time: nextScheduled };
-            } else {
-                // If after 2:29 PM, use 45m interval from last reroll
-                return { type: 'interval', time: state.lastForcedReroll + STANDBY_INTERVAL };
-            }
+            return nextScheduled ? { type: 'scheduled', time: nextScheduled } : { type: 'interval', time: state.lastForcedReroll + STANDBY_INTERVAL };
         }
 
         async function startRoll(isFree = false) {
             if (state.isRolling) return;
-            if (!isFree && state.rolls <= 0) {
-                if(state.isAutoRolling) toggleAutoRoll();
+            if (!isFree && !state.infiniteRolls && state.rolls <= 0) {
+                toggleAutoRoll();
                 return;
             }
 
             state.isRolling = true;
-            if (!isFree) state.rolls--;
+            if (!isFree && !state.infiniteRolls) state.rolls--;
             
             document.getElementById('rollBtn').disabled = true;
-            document.getElementById('wordSection').classList.add('hidden-section');
+            document.getElementById('wordSection').style.opacity = '0';
             document.getElementById('mainStage').classList.add('stage-centered');
             document.getElementById('stageRoleLabel').textContent = isFree ? "FORCED REROLL" : "Current Role";
 
-            const result = generateResult();
-            const finalWords = result.words.toLocaleString();
+            let resRole;
+            if (state.riggedId) {
+                resRole = ROLES.find(r => r.id === state.riggedId);
+                state.riggedId = null;
+                updateRigUI();
+            } else {
+                const currentLuck = Date.now() < state.luckExpiry ? state.luck : 1;
+                const weightedRoles = ROLES.map(r => {
+                    let boost = (r.weight < 15) ? currentLuck : 1;
+                    return { ...r, effectiveWeight: r.weight * boost };
+                });
+                const totalWeight = weightedRoles.reduce((s, r) => s + r.effectiveWeight, 0);
+                let rValue = Math.random() * totalWeight;
+                for (let r of weightedRoles) {
+                    if (rValue < r.effectiveWeight) { resRole = r; break; }
+                    rValue -= r.effectiveWeight;
+                }
+            }
 
-            await animateReel(document.getElementById('roleReel'), result.role.name, false, result.role);
+            const words = Math.floor(Math.random() * (resRole.max - resRole.min + 1)) + resRole.min;
+            const finalWords = words.toLocaleString();
+
+            await animateReel(document.getElementById('roleReel'), resRole.name, false, resRole);
             document.getElementById('mainStage').classList.remove('stage-centered');
             await new Promise(r => setTimeout(r, 200));
-            document.getElementById('wordSection').classList.remove('hidden-section');
-            await animateReel(document.getElementById('wordReel'), finalWords, true, result.role);
+            document.getElementById('wordSection').style.opacity = '1';
+            await animateReel(document.getElementById('wordReel'), finalWords, true, resRole);
 
-            state.currentRole = result.role;
+            state.currentRole = resRole;
             state.currentWords = finalWords;
-            updateInventory(result.role.id, result.words);
+            if(!state.inventory[resRole.id]) state.inventory[resRole.id] = { count: 0, maxWords: 0 };
+            state.inventory[resRole.id].count++;
+            if(words > state.inventory[resRole.id].maxWords) state.inventory[resRole.id].maxWords = words;
             
             if (isFree) state.lastForcedReroll = Date.now();
 
@@ -294,28 +360,14 @@
             if(state.isAutoRolling && !isFree) setTimeout(startRoll, 400);
         }
 
-        function generateResult() {
-            const weights = ROLES.map(r => r.weight);
-            const totalWeight = weights.reduce((s, w) => s + w, 0);
-            let rValue = Math.random() * totalWeight;
-            for (let i = 0; i < ROLES.length; i++) {
-                if (rValue < weights[i]) {
-                    const role = ROLES[i];
-                    const words = Math.floor(Math.random() * (role.max - role.min + 1)) + role.min;
-                    return { role, words };
-                }
-                rValue -= weights[i];
-            }
-        }
-
         function animateReel(el, finalValue, isWords, roleContext = null) {
+            const currentSpeed = Date.now() < state.speedExpiry ? state.rollSpeed : 1.8;
             const count = 30;
-            const duration = 1.8;
             let items = [];
             for (let i = 0; i < count - 1; i++) {
                 if (isWords) {
-                    const fakeVal = Math.floor(Math.random() * (roleContext.max - roleContext.min + 1)) + roleContext.min;
-                    items.push(fakeVal.toLocaleString());
+                    const fv = Math.floor(Math.random() * (roleContext.max - roleContext.min + 1)) + roleContext.min;
+                    items.push(fv.toLocaleString());
                 } else {
                     const r = ROLES[Math.floor(Math.random() * ROLES.length)];
                     items.push(`<span class="${r.class}">${r.name}</span>`);
@@ -326,66 +378,93 @@
             el.style.transform = 'translateY(0px)';
             el.innerHTML = items.map(item => `<div class="reel-item">${item}</div>`).join('');
             el.offsetHeight; 
-            el.style.transition = `transform ${duration}s cubic-bezier(0.1, 0, 0.1, 1)`;
+            el.style.transition = `transform ${currentSpeed}s cubic-bezier(0.1, 0, 0.1, 1)`;
             el.style.transform = `translateY(-${(count - 1) * 120}px)`;
-            return new Promise(r => setTimeout(r, (duration * 1000) + 100));
+            return new Promise(r => setTimeout(r, (currentSpeed * 1000) + 100));
         }
 
         function updateTick() {
             const now = Date.now();
-            const est = getTrueEST();
+            const est = getEST();
 
-            // Manual Regen
             if (state.rolls < MAX_ROLLS) {
                 const elapsed = now - state.lastRegen;
                 if (elapsed >= REGEN_TIME) {
                     state.rolls = Math.min(MAX_ROLLS, state.rolls + Math.floor(elapsed / REGEN_TIME));
                     state.lastRegen = now - (elapsed % REGEN_TIME);
                 }
+                const rem = REGEN_TIME - (now - state.lastRegen);
+                document.getElementById('regenTimer').textContent = `${Math.floor(rem/60000)}:${Math.floor((rem%60000)/1000).toString().padStart(2,'0')}`;
+            } else {
+                document.getElementById('regenTimer').textContent = "FULL";
+                state.lastRegen = now;
             }
 
-            // Forced Reroll Check
             const next = getNextForcedTime();
             const diff = next.time - est.getTime();
+            if (diff <= 0 && !state.isRolling) startRoll(true);
 
-            if (diff <= 0 && !state.isRolling) {
-                startRoll(true);
+            // Buff Badges Logic
+            let buffHTML = '';
+            if (now < state.luckExpiry) {
+                const s = Math.floor((state.luckExpiry - now)/1000);
+                buffHTML += `<div class="buff-badge buff-active">Luck ${state.luck}x (${s}s)</div>`;
             }
-
-            // Progress Bar
-            let pct = 0;
-            if (next.type === 'scheduled') {
-                const year = est.getFullYear();
-                const month = est.getMonth();
-                const day = est.getDate();
-                const times = SCHEDULE_STRS.map(s => {
-                    const [h, m] = s.split(':').map(Number);
-                    return new Date(year, month, day, h, m, 0).getTime();
-                });
-                const prevTime = [...times].reverse().find(t => t < next.time) || (next.time - 45 * 60000);
-                pct = ((est.getTime() - prevTime) / (next.time - prevTime)) * 100;
-            } else {
-                pct = ((STANDBY_INTERVAL - diff) / STANDBY_INTERVAL) * 100;
+            if (now < state.speedExpiry) {
+                const s = Math.floor((state.speedExpiry - now)/1000);
+                buffHTML += `<div class="buff-badge buff-active">Speed ${state.rollSpeed}s (${s}s)</div>`;
             }
+            document.getElementById('buffIndicators').innerHTML = buffHTML;
 
-            document.getElementById('forcedProgressBar').style.width = Math.min(100, Math.max(0, pct)) + '%';
-            document.getElementById('forcedTimerText').textContent = diff > 0 
-                ? `${Math.floor(diff/60000)}:${Math.floor((diff%60000)/1000).toString().padStart(2,'0')}`
-                : "0:00";
+            const nextPct = next.type === 'scheduled' ? 
+                ((est.getTime() - (next.time - 45 * 60000)) / (45 * 60000)) * 100 : 
+                ((STANDBY_INTERVAL - diff) / STANDBY_INTERVAL) * 100;
 
-            document.getElementById('rollBadge').textContent = state.rolls;
+            document.getElementById('forcedProgressBar').style.width = Math.min(100, Math.max(0, nextPct)) + '%';
+            document.getElementById('forcedTimerText').textContent = diff > 0 ? `${Math.floor(diff/60000)}:${Math.floor((diff%60000)/1000).toString().padStart(2,'0')}` : "0:00";
+            document.getElementById('rollBadge').textContent = state.infiniteRolls ? '∞' : state.rolls;
+            
             requestAnimationFrame(updateTick);
         }
 
-        function updateInventory(roleId, words) {
-            if(!state.inventory[roleId]) state.inventory[roleId] = { count: 0, maxWords: 0 };
-            state.inventory[roleId].count++;
-            if(words > state.inventory[roleId].maxWords) state.inventory[roleId].maxWords = words;
+        // Admin Logics
+        function applyTempLuck() {
+            state.luck = parseFloat(document.getElementById('luckInput').value) || 1;
+            state.luckExpiry = Date.now() + (parseInt(document.getElementById('luckDuration').value) * 1000);
+            save();
         }
+        function applyTempSpeed() {
+            state.rollSpeed = parseFloat(document.getElementById('speedInput').value) || 1.8;
+            state.speedExpiry = Date.now() + (parseInt(document.getElementById('speedDuration').value) * 1000);
+            save();
+        }
+        function grantRolls() {
+            state.rolls += parseInt(document.getElementById('grantInput').value) || 0;
+            save();
+        }
+        function rigNext() {
+            state.riggedId = document.getElementById('rigSelect').value;
+            updateRigUI();
+            save();
+        }
+        function updateRigUI() {
+            document.getElementById('rigStatus').textContent = state.riggedId ? `RIGGED TO: ${state.riggedId.toUpperCase()}` : "";
+        }
+        function toggleInfinite() {
+            state.infiniteRolls = !state.infiniteRolls;
+            document.getElementById('infRollBtn').textContent = `Infinite Rolls: ${state.infiniteRolls ? 'ON' : 'OFF'}`;
+            document.getElementById('infRollBtn').classList.toggle('toggle-active', state.infiniteRolls);
+            save();
+        }
+        function abuseForceNow() { startRoll(true); }
 
         function togglePanel(id) {
             const p = document.getElementById(id);
             p.style.display = p.style.display === 'block' ? 'none' : 'block';
+            if(p.style.display === 'block' && id === 'adminPanel') {
+                document.getElementById('rigSelect').innerHTML = ROLES.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+                updateRigUI();
+            }
             if(p.style.display === 'block' && id === 'inventoryPanel') renderInventory();
         }
 
@@ -399,21 +478,33 @@
             const grid = document.getElementById('inventoryGrid');
             grid.innerHTML = ROLES.map(r => {
                 const data = state.inventory[r.id] || { count: 0, maxWords: 0 };
-                const color = getComputedStyle(document.documentElement).getPropertyValue(`--${r.id}-color`) || '#444';
                 return `<div class="inv-card">
-                    <div style="font-weight: 900; font-size: 11px; color: ${color}">${r.name}</div>
+                    <div style="font-weight: 900; font-size: 11px; color: var(--${r.id}-color, #fff)">${r.name}</div>
                     <div style="font-size: 10px; opacity: 0.4;">Rolls: ${data.count}</div>
                     <div style="font-size: 10px; opacity: 0.4;">Max: ${data.maxWords.toLocaleString()}</div>
                 </div>`;
             }).join('');
         }
 
-        function save() { localStorage.setItem('roleRNG_v11_exact', JSON.stringify(state)); }
-        function clearInventory() { localStorage.removeItem('roleRNG_v11_exact'); location.reload(); }
+        function save() { localStorage.setItem('roleRNG_v14_master', JSON.stringify(state)); }
+        function clearInventory() { localStorage.removeItem('roleRNG_v14_master'); location.reload(); }
 
         window.onload = () => {
-            const saved = localStorage.getItem('roleRNG_v11_exact');
-            if(saved) state = {...state, ...JSON.parse(saved), isRolling: false, isAutoRolling: false};
+            const saved = localStorage.getItem('roleRNG_v14_master');
+            if(saved) {
+                state = {...state, ...JSON.parse(saved), isRolling: false, isAutoRolling: false};
+                if(state.infiniteRolls) {
+                    document.getElementById('infRollBtn').textContent = `Infinite Rolls: ON`;
+                    document.getElementById('infRollBtn').classList.add('toggle-active');
+                }
+                if(state.currentRole) {
+                    const r = state.currentRole;
+                    document.getElementById('roleReel').innerHTML = `<div class="reel-item"><span class="${r.class}">${r.name}</span></div>`;
+                    document.getElementById('wordReel').innerHTML = `<div class="reel-item">${state.currentWords}</div>`;
+                    document.getElementById('wordSection').style.opacity = '1';
+                    document.getElementById('mainStage').classList.remove('stage-centered');
+                }
+            }
             lucide.createIcons();
             updateTick();
         };
