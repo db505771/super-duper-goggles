@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Role RNG Elite - Scheduled Edition</title>
+    <title>Role RNG Elite - Exact Schedule</title>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&display=swap');
@@ -115,19 +115,11 @@
         .icon-btn { background: #111; border: 1px solid #222; color: #fff; width: 56px; height: 56px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .icon-btn:hover { background: #1a1a1a; }
 
-        .admin-row { background: #111; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #222; }
-        .admin-row h4 { margin: 0 0 12px 0; font-size: 11px; text-transform: uppercase; color: #888; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
-        select, input { background: #000; color: #fff; border: 1px solid #333; padding: 12px; width: 100%; margin-bottom: 10px; border-radius: 6px; font-family: inherit; font-size: 14px; }
-        
-        .toggle-btn { background: #111; border: 1px solid #333; color: #666; padding: 8px 12px; font-size: 11px; cursor: pointer; border-radius: 6px; flex: 1; min-width: 90px; text-align: center; }
-        .toggle-active { background: #fff; color: #000; border-color: #fff; font-weight: 700; }
-
         .inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
         .inv-card { background: #0a0a0a; padding: 15px; border-radius: 8px; border: 1px solid #1a1a1a; }
 
         .hidden-section { opacity: 0; pointer-events: none; }
         .countdown-container { display: flex; flex-direction: column; align-items: center; gap: 5px; min-height: 50px; }
-        .countdown-item { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 11px; letter-spacing: 1px; color: #f1c40f; }
         .timer-label { font-size: 9px; color: #444; text-transform: uppercase; margin-bottom: 2px; }
         .next-roll-timer { font-size: 10px; color: #666; }
         
@@ -168,10 +160,8 @@
                 <button id="rollBtn" class="roll-btn">Roll</button>
             </div>
             
-            <div class="countdown-container" id="countdownArea">
-                <div id="globalMods"></div>
-                <div><div class="timer-label">Regen</div><div id="regenTimer" class="next-roll-timer"></div></div>
-                <div><div class="timer-label" id="rerollLabel">Next Forced Reroll</div><div id="forcedTimerText" class="next-roll-timer">--:--</div></div>
+            <div class="countdown-container">
+                <div><div class="timer-label">Next Forced Reroll</div><div id="forcedTimerText" class="next-roll-timer">--:--</div></div>
             </div>
             
             <div style="display: flex; gap: 16px; margin-top: 5px;">
@@ -188,7 +178,6 @@
         </div>
     </div>
 
-    <!-- UI Panels -->
     <div id="inventoryPanel" class="panel">
         <div class="panel-header">
             <h2 style="margin:0; font-weight: 900;">INVENTORY</h2>
@@ -201,46 +190,13 @@
 
     <div id="adminPanel" class="panel">
         <div class="panel-header">
-            <h2 style="margin:0; font-weight: 900; color: #e74c3c;">ADMIN ABUSE</h2>
+            <h2 style="margin:0; font-weight: 900; color: #e74c3c;">ADMIN</h2>
             <button style="background:none; border:none; color:#fff; cursor:pointer;" onclick="togglePanel('adminPanel')">
                 <i data-lucide="x"></i>
             </button>
         </div>
-        
-        <div class="admin-section">
-            <div class="admin-row">
-                <h4><i data-lucide="gauge" size="14"></i> Global Speed Boost</h4>
-                <div style="display: flex; gap: 10px;">
-                    <input type="number" id="speedValue" value="0.2" step="0.1">
-                    <input type="number" id="speedTime" value="300">
-                </div>
-                <button class="abuse-btn" onclick="applyGlobalEvent('speed')">Apply Speed</button>
-            </div>
-
-            <div class="admin-row">
-                <h4><i data-lucide="shield-off" size="14"></i> Auto-Stop Filters</h4>
-                <div id="stopFilters" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
-            </div>
-
-            <div class="admin-row">
-                <h4><i data-lucide="timer-off" size="14"></i> Reroll Manipulation</h4>
-                <button class="abuse-btn" onclick="abuseForceReroll()">Instant Forced Reroll (Free)</button>
-                <button class="abuse-btn" style="color: #e67e22; border-color: #e67e22;" onclick="abuseAddRolls(5)">+5 Manual Rolls</button>
-                <button id="infRollBtn" class="toggle-btn" style="width:100%; margin-top: 10px;" onclick="abuseToggleInfinite()">Infinite Rolls: OFF</button>
-            </div>
-
-            <div class="admin-row">
-                <h4><i data-lucide="gift" size="14"></i> Instant Give Role</h4>
-                <select id="giveRoleType"></select>
-                <input type="number" id="giveRoleWords" placeholder="Custom Word Count">
-                <button class="abuse-btn" onclick="abuseGiveRole()">Add to Inventory</button>
-            </div>
-
-            <div class="admin-row">
-                <h4><i data-lucide="database" size="14"></i> System</h4>
-                <button class="danger-btn" onclick="clearInventory()">Full Wipe</button>
-            </div>
-        </div>
+        <button class="abuse-btn" onclick="startRoll(true)">Force Reroll Now</button>
+        <button class="danger-btn" style="margin-top:20px;" onclick="clearInventory()">Wipe Data</button>
     </div>
 
     <script>
@@ -255,10 +211,10 @@
             { id: 'history', name: "History", min: 999999999, max: 999999999, weight: 0.2, class: "role-history" }
         ];
 
-        // Specific schedule (EST)
+        // Specific Schedule Strings
         const SCHEDULE_STRS = ["07:40", "08:21", "09:07", "09:53", "10:39", "11:25", "12:11", "12:57", "13:43", "14:29"];
-        const REGEN_TIME = 30 * 60 * 1000;
         const STANDBY_INTERVAL = 45 * 60 * 1000;
+        const REGEN_TIME = 30 * 60 * 1000;
         const MAX_ROLLS = 3;
 
         let state = {
@@ -266,97 +222,55 @@
             rolls: MAX_ROLLS,
             lastRegen: Date.now(),
             lastForcedReroll: Date.now(),
-            lastProcessedScheduledTime: 0, 
-            infiniteRolls: false,
             isRolling: false,
             isAutoRolling: false,
-            stopFilters: ['king', 'history'],
             currentRole: null,
-            currentWords: null,
-            events: {
-                luck: { multiplier: 1, expires: 0 },
-                speed: { duration: 1.8, expires: 0 }
-            }
+            currentWords: null
         };
 
-        function getEST() {
+        // Forces time to Eastern Standard Time regardless of local clock
+        function getTrueEST() {
             const now = new Date();
-            // Simple EST offset calculation (UTC-5)
-            return new Date(now.getTime() + (now.getTimezoneOffset() * 60000) - (5 * 3600000));
+            const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+            return new Date(utc - (4 * 3600000)); // EDT (UTC-4) for current date
         }
 
         function getNextForcedTime() {
-            const est = getEST();
-            const todayStr = est.toDateString();
-            
-            // Map schedule strings to actual timestamps for today
-            const times = SCHEDULE_STRS.map(s => new Date(`${todayStr} ${s}`).getTime());
-            
-            // Find next scheduled time today
+            const est = getTrueEST();
+            const year = est.getFullYear();
+            const month = est.getMonth();
+            const day = est.getDate();
+
+            // Check the schedule list
+            const times = SCHEDULE_STRS.map(s => {
+                const [h, m] = s.split(':').map(Number);
+                return new Date(year, month, day, h, m, 0).getTime();
+            });
+
             const nextScheduled = times.find(t => t > est.getTime());
-            
+
             if (nextScheduled) {
                 return { type: 'scheduled', time: nextScheduled };
             } else {
-                // If all scheduled times passed today, use 45 min interval from last reroll
+                // If after 2:29 PM, use 45m interval from last reroll
                 return { type: 'interval', time: state.lastForcedReroll + STANDBY_INTERVAL };
             }
         }
 
-        function togglePanel(id) {
-            const p = document.getElementById(id);
-            const isClosing = p.style.display === 'block';
-            p.style.display = isClosing ? 'none' : 'block';
-            if(!isClosing) {
-                if(id === 'inventoryPanel') renderInventory();
-                if(id === 'adminPanel') renderAdmin();
-            }
-        }
-
-        function renderAdmin() {
-            document.getElementById('stopFilters').innerHTML = ROLES.map(r => `
-                <button class="toggle-btn ${state.stopFilters.includes(r.id) ? 'toggle-active' : ''}" onclick="toggleFilter('${r.id}')">
-                    ${r.name}
-                </button>
-            `).join('');
-            document.getElementById('giveRoleType').innerHTML = ROLES.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
-        }
-
-        function toggleFilter(id) {
-            state.stopFilters = state.stopFilters.includes(id) ? state.stopFilters.filter(f => f !== id) : [...state.stopFilters, id];
-            renderAdmin();
-            save();
-        }
-
-        function generateResult() {
-            const currentLuck = Date.now() < state.events.luck.expires ? state.events.luck.multiplier : 1;
-            const weights = ROLES.map(r => (r.weight < 10) ? r.weight * currentLuck : r.weight);
-            const totalWeight = weights.reduce((s, w) => s + w, 0);
-            let rValue = Math.random() * totalWeight;
-            let role;
-            for (let i = 0; i < ROLES.length; i++) {
-                if (rValue < weights[i]) { role = ROLES[i]; break; }
-                rValue -= weights[i];
-            }
-            const words = Math.floor(Math.random() * (role.max - role.min + 1)) + role.min;
-            return { role, words };
-        }
-
         async function startRoll(isFree = false) {
             if (state.isRolling) return;
-            if (!isFree && !state.infiniteRolls && state.rolls <= 0) {
-                toggleAutoRoll();
+            if (!isFree && state.rolls <= 0) {
+                if(state.isAutoRolling) toggleAutoRoll();
                 return;
             }
 
             state.isRolling = true;
-            if (!isFree && !state.infiniteRolls) state.rolls--;
+            if (!isFree) state.rolls--;
             
             document.getElementById('rollBtn').disabled = true;
             document.getElementById('wordSection').classList.add('hidden-section');
             document.getElementById('mainStage').classList.add('stage-centered');
             document.getElementById('stageRoleLabel').textContent = isFree ? "FORCED REROLL" : "Current Role";
-            document.getElementById('stageRoleLabel').style.color = isFree ? "#f1c40f" : "rgba(255,255,255,0.3)";
 
             const result = generateResult();
             const finalWords = result.words.toLocaleString();
@@ -377,15 +291,26 @@
             state.isRolling = false;
             document.getElementById('rollBtn').disabled = false;
 
-            if(state.isAutoRolling && !isFree) {
-                if(state.stopFilters.includes(result.role.id)) toggleAutoRoll();
-                else setTimeout(startRoll, 400);
+            if(state.isAutoRolling && !isFree) setTimeout(startRoll, 400);
+        }
+
+        function generateResult() {
+            const weights = ROLES.map(r => r.weight);
+            const totalWeight = weights.reduce((s, w) => s + w, 0);
+            let rValue = Math.random() * totalWeight;
+            for (let i = 0; i < ROLES.length; i++) {
+                if (rValue < weights[i]) {
+                    const role = ROLES[i];
+                    const words = Math.floor(Math.random() * (role.max - role.min + 1)) + role.min;
+                    return { role, words };
+                }
+                rValue -= weights[i];
             }
         }
 
         function animateReel(el, finalValue, isWords, roleContext = null) {
             const count = 30;
-            const duration = Date.now() < state.events.speed.expires ? state.events.speed.duration : 1.8;
+            const duration = 1.8;
             let items = [];
             for (let i = 0; i < count - 1; i++) {
                 if (isWords) {
@@ -406,100 +331,68 @@
             return new Promise(r => setTimeout(r, (duration * 1000) + 100));
         }
 
-        function updateInventory(roleId, words) {
-            if(!state.inventory[roleId]) state.inventory[roleId] = { count: 0, maxWords: 0 };
-            state.inventory[roleId].count++;
-            if(words > state.inventory[roleId].maxWords) state.inventory[roleId].maxWords = words;
-        }
-
-        // Admin Abuse
-        function abuseGiveRole() {
-            const id = document.getElementById('giveRoleType').value;
-            const words = parseInt(document.getElementById('giveRoleWords').value) || 0;
-            updateInventory(id, words);
-            save();
-            renderInventory();
-        }
-        function abuseAddRolls(n) { state.rolls += n; save(); }
-        function abuseToggleInfinite() {
-            state.infiniteRolls = !state.infiniteRolls;
-            document.getElementById('infRollBtn').textContent = `Infinite Rolls: ${state.infiniteRolls ? 'ON' : 'OFF'}`;
-            document.getElementById('infRollBtn').classList.toggle('toggle-active', state.infiniteRolls);
-            save();
-        }
-        function abuseForceReroll() { togglePanel('adminPanel'); startRoll(true); }
-        function applyGlobalEvent(type) {
-            const val = document.getElementById('speedValue').value;
-            const time = document.getElementById('speedTime').value;
-            state.events.speed = { duration: parseFloat(val), expires: Date.now() + (parseInt(time) * 1000) };
-            save();
-            togglePanel('adminPanel');
-        }
-
-        function toggleAutoRoll() {
-            state.isAutoRolling = !state.isAutoRolling;
-            document.getElementById('autoRollToggle').classList.toggle('auto-active', state.isAutoRolling);
-            if(state.isAutoRolling && !state.isRolling) startRoll();
-        }
-
-        function save() { localStorage.setItem('roleRNG_v9_sched', JSON.stringify(state)); }
-
         function updateTick() {
             const now = Date.now();
-            const est = getEST();
+            const est = getTrueEST();
 
-            // 1. Manual Regen
+            // Manual Regen
             if (state.rolls < MAX_ROLLS) {
                 const elapsed = now - state.lastRegen;
                 if (elapsed >= REGEN_TIME) {
                     state.rolls = Math.min(MAX_ROLLS, state.rolls + Math.floor(elapsed / REGEN_TIME));
                     state.lastRegen = now - (elapsed % REGEN_TIME);
                 }
-                const rem = REGEN_TIME - (now - state.lastRegen);
-                document.getElementById('regenTimer').textContent = `${Math.floor(rem/60000)}:${Math.floor((rem%60000)/1000).toString().padStart(2,'0')}`;
-            } else {
-                document.getElementById('regenTimer').textContent = "FULL";
-                state.lastRegen = now;
             }
 
-            // 2. Forced Logic (Scheduled or 45m)
+            // Forced Reroll Check
             const next = getNextForcedTime();
-            const timeRemaining = next.time - est.getTime();
+            const diff = next.time - est.getTime();
 
-            if (timeRemaining <= 0 && !state.isRolling) {
+            if (diff <= 0 && !state.isRolling) {
                 startRoll(true);
             }
 
-            // UI Progress Bar
+            // Progress Bar
             let pct = 0;
             if (next.type === 'scheduled') {
-                document.getElementById('rerollLabel').textContent = "Next Schedule (EST)";
-                // Find start time (either previous schedule or start of day)
-                const todayStr = est.toDateString();
-                const times = SCHEDULE_STRS.map(s => new Date(`${todayStr} ${s}`).getTime());
-                const prevTime = [...times].reverse().find(t => t < next.time) || new Date(`${todayStr} 00:00`).getTime();
+                const year = est.getFullYear();
+                const month = est.getMonth();
+                const day = est.getDate();
+                const times = SCHEDULE_STRS.map(s => {
+                    const [h, m] = s.split(':').map(Number);
+                    return new Date(year, month, day, h, m, 0).getTime();
+                });
+                const prevTime = [...times].reverse().find(t => t < next.time) || (next.time - 45 * 60000);
                 pct = ((est.getTime() - prevTime) / (next.time - prevTime)) * 100;
             } else {
-                document.getElementById('rerollLabel').textContent = "45m Standby Active";
-                pct = ((STANDBY_INTERVAL - timeRemaining) / STANDBY_INTERVAL) * 100;
+                pct = ((STANDBY_INTERVAL - diff) / STANDBY_INTERVAL) * 100;
             }
 
             document.getElementById('forcedProgressBar').style.width = Math.min(100, Math.max(0, pct)) + '%';
-            document.getElementById('forcedTimerText').textContent = timeRemaining > 0 
-                ? `${Math.floor(timeRemaining/60000)}:${Math.floor((timeRemaining%60000)/1000).toString().padStart(2,'0')}`
-                : "REROLLING...";
+            document.getElementById('forcedTimerText').textContent = diff > 0 
+                ? `${Math.floor(diff/60000)}:${Math.floor((diff%60000)/1000).toString().padStart(2,'0')}`
+                : "0:00";
 
-            // Badges
-            document.getElementById('rollBadge').textContent = state.infiniteRolls ? '∞' : state.rolls;
-            document.getElementById('rollBadge').style.background = state.rolls === 0 && !state.infiniteRolls ? '#555' : '#e74c3c';
-
-            if(state.events.speed.expires > now) {
-                document.getElementById('globalMods').innerHTML = `<div class="countdown-item">SPEED BOOST: ${Math.ceil((state.events.speed.expires - now)/1000)}s</div>`;
-            } else {
-                document.getElementById('globalMods').innerHTML = "";
-            }
-
+            document.getElementById('rollBadge').textContent = state.rolls;
             requestAnimationFrame(updateTick);
+        }
+
+        function updateInventory(roleId, words) {
+            if(!state.inventory[roleId]) state.inventory[roleId] = { count: 0, maxWords: 0 };
+            state.inventory[roleId].count++;
+            if(words > state.inventory[roleId].maxWords) state.inventory[roleId].maxWords = words;
+        }
+
+        function togglePanel(id) {
+            const p = document.getElementById(id);
+            p.style.display = p.style.display === 'block' ? 'none' : 'block';
+            if(p.style.display === 'block' && id === 'inventoryPanel') renderInventory();
+        }
+
+        function toggleAutoRoll() {
+            state.isAutoRolling = !state.isAutoRolling;
+            document.getElementById('autoRollToggle').classList.toggle('auto-active', state.isAutoRolling);
+            if(state.isAutoRolling && !state.isRolling) startRoll();
         }
 
         function renderInventory() {
@@ -515,45 +408,12 @@
             }).join('');
         }
 
-        function clearInventory() { if(confirm("WIPE ALL?")) { localStorage.removeItem('roleRNG_v9_sched'); location.reload(); } }
+        function save() { localStorage.setItem('roleRNG_v11_exact', JSON.stringify(state)); }
+        function clearInventory() { localStorage.removeItem('roleRNG_v11_exact'); location.reload(); }
 
         window.onload = () => {
-            const saved = localStorage.getItem('roleRNG_v9_sched');
-            if(saved) {
-                state = {...state, ...JSON.parse(saved), isRolling: false, isAutoRolling: false};
-                
-                // Offline Processing for missed scheduled roles
-                const est = getEST();
-                const todayStr = est.toDateString();
-                const scheduledTimestamps = SCHEDULE_STRS.map(s => new Date(`${todayStr} ${s}`).getTime());
-                
-                // Find any scheduled times that passed since our last recorded forced roll
-                const missed = scheduledTimestamps.filter(t => t > state.lastForcedReroll && t <= est.getTime());
-                
-                if (missed.length > 0) {
-                    missed.forEach((m, idx) => {
-                        const res = generateResult();
-                        updateInventory(res.role.id, res.words);
-                        if (idx === missed.length - 1) {
-                            state.currentRole = res.role;
-                            state.currentWords = res.words.toLocaleString();
-                        }
-                    });
-                    state.lastForcedReroll = est.getTime();
-                }
-
-                if(state.currentRole) {
-                    const r = state.currentRole;
-                    document.getElementById('roleReel').innerHTML = `<div class="reel-item"><span class="${r.class}">${r.name}</span></div>`;
-                    document.getElementById('wordReel').innerHTML = `<div class="reel-item">${state.currentWords}</div>`;
-                    document.getElementById('wordSection').classList.remove('hidden-section');
-                    document.getElementById('mainStage').classList.remove('stage-centered');
-                }
-                if(state.infiniteRolls) {
-                    document.getElementById('infRollBtn').textContent = `Infinite Rolls: ON`;
-                    document.getElementById('infRollBtn').classList.add('toggle-active');
-                }
-            }
+            const saved = localStorage.getItem('roleRNG_v11_exact');
+            if(saved) state = {...state, ...JSON.parse(saved), isRolling: false, isAutoRolling: false};
             lucide.createIcons();
             updateTick();
         };
